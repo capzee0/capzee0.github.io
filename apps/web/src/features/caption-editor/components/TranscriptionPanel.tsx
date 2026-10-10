@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Mic, Loader2, AlertCircle, CheckCircle2, RefreshCw, Clock } from 'lucide-react';
+import { Mic, Loader2, AlertCircle, CheckCircle2, RefreshCw, Clock, Upload } from 'lucide-react';
 import type { Transcript, Segment } from '@capzee/contracts';
+import { parseSRT, parseVTT } from '@capzee/contracts';
 import type { JobState } from '@/stores/projectStore';
 import { formatDuration, cn } from '@/lib/utils';
 import { SUPPORTED_TRANSCRIPTION_LANGUAGES, WHISPER_MODELS } from '@capzee/contracts';
@@ -105,11 +106,49 @@ export function TranscriptionPanel({
           id="start-transcription-btn"
         >
           <Mic className="w-3.5 h-3.5" />
-          Start Transcription
+          Start AI Transcription
         </button>
 
-        <p className="text-xs text-text-muted text-center">
-          Requires FFmpeg and faster-whisper to be installed.
+        {/* Divider */}
+        <div className="relative flex py-1 items-center">
+          <div className="flex-grow border-t border-surface-border"></div>
+          <span className="flex-shrink mx-2 text-[10px] uppercase font-bold text-text-muted">Or (No-AI Options)</span>
+          <div className="flex-grow border-t border-surface-border"></div>
+        </div>
+
+        {/* File Import Button */}
+        <div>
+          <label className="btn-secondary w-full text-xs flex items-center justify-center gap-1.5 cursor-pointer py-2">
+            <Upload className="w-3.5 h-3.5 text-accent-blue" />
+            Import Subtitles (.srt / .vtt)
+            <input
+              type="file"
+              accept=".srt,.vtt,.txt"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                  const content = event.target?.result as string;
+                  if (!content) return;
+                  try {
+                    const parsed = file.name.endsWith('.vtt') ? parseVTT(content) : parseSRT(content);
+                    if (parsed.segments.length > 0) {
+                      onTranscriptChange(parsed);
+                    }
+                  } catch (err) {
+                    console.error('Subtitle parse error:', err);
+                  }
+                };
+                reader.readAsText(file);
+              }}
+            />
+          </label>
+        </div>
+
+        <p className="text-[11px] text-text-muted text-center">
+          ⚡ 100% Offline & Instant: Drop your existing SRT/VTT file without needing AI models.
         </p>
       </div>
     );
@@ -245,9 +284,25 @@ export function TranscriptionPanel({
                     </div>
                   </div>
                 ) : (
-                  <p className={cn('text-xs leading-relaxed', isActive ? 'text-text-primary' : 'text-text-secondary')}>
-                    {seg.text}
-                  </p>
+                  <div className={cn('text-xs leading-relaxed flex flex-wrap gap-x-1 gap-y-0.5', isActive ? 'text-text-primary' : 'text-text-secondary')}>
+                    {seg.words && seg.words.length > 0 ? (
+                      seg.words.map((w) => (
+                        <span
+                          key={w.id}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onSeek(w.start);
+                          }}
+                          className="hover:text-accent-blue hover:underline cursor-pointer rounded px-0.5 transition-colors"
+                          title={`Click to seek to ${w.start.toFixed(2)}s`}
+                        >
+                          {w.text}
+                        </span>
+                      ))
+                    ) : (
+                      <span>{seg.text}</span>
+                    )}
+                  </div>
                 )}
               </div>
             );

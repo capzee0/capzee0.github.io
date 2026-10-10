@@ -278,6 +278,50 @@ export type ApiError = z.infer<typeof ApiErrorSchema>;
 
 export const CAPTION_PRESETS: Omit<CaptionStyle, 'aspectRatio'>[] = [
   {
+    id: 'autocap-karaoke',
+    name: 'AutoCap Viral Karaoke',
+    fontFamily: 'Montserrat',
+    fontSize: 38,
+    fontWeight: '800',
+    textColor: '#FFFFFF',
+    activeWordColor: '#FFDF00',
+    outlineColor: '#000000',
+    outlineWidth: 3,
+    shadow: { enabled: true, color: '#000000', blur: 6, offsetX: 1, offsetY: 1 },
+    backgroundStyle: 'pill',
+    backgroundColor: '#111111',
+    backgroundOpacity: 0.85,
+    textAlign: 'center',
+    position: { vertical: 'bottom', horizontal: 'center', offsetY: -8, offsetX: 0 },
+    maxLineLength: 32,
+    maxLines: 2,
+    animationMode: 'karaoke',
+    safeAreaMarginPercent: 5,
+    lineHeightMultiplier: 1.35,
+  },
+  {
+    id: 'fluxocut-pop',
+    name: 'FluxoCut Cyber Pop',
+    fontFamily: 'Inter',
+    fontSize: 40,
+    fontWeight: '900',
+    textColor: '#FFFFFF',
+    activeWordColor: '#00F0FF',
+    outlineColor: '#0A0A0A',
+    outlineWidth: 4,
+    shadow: { enabled: true, color: '#00F0FF', blur: 14, offsetX: 0, offsetY: 0 },
+    backgroundStyle: 'none',
+    backgroundColor: undefined,
+    backgroundOpacity: 0,
+    textAlign: 'center',
+    position: { vertical: 'bottom', horizontal: 'center', offsetY: -8, offsetX: 0 },
+    maxLineLength: 30,
+    maxLines: 2,
+    animationMode: 'word-by-word',
+    safeAreaMarginPercent: 5,
+    lineHeightMultiplier: 1.35,
+  },
+  {
     id: 'clean-white',
     name: 'Clean White',
     fontFamily: 'Inter',
@@ -583,5 +627,72 @@ export function generateVTT(transcript: Transcript): string {
 
 export function generatePlainText(transcript: Transcript): string {
   return transcript.segments.map((s) => s.text.trim()).filter(Boolean).join('\n');
+}
+
+export function parseSRTTime(timeStr: string): number {
+  const parts = timeStr.trim().split(':');
+  if (parts.length < 3) return 0;
+  const hours = parseFloat(parts[0]);
+  const minutes = parseFloat(parts[1]);
+  const secParts = parts[2].split(/[,.]/);
+  const secs = parseFloat(secParts[0]);
+  const ms = secParts[1] ? parseFloat(secParts[1].padEnd(3, '0').slice(0, 3)) : 0;
+  return hours * 3600 + minutes * 60 + secs + ms / 1000;
+}
+
+export function parseSRT(srtContent: string): Transcript {
+  const blocks = srtContent.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split(/\n\s*\n/);
+  const segments: Segment[] = [];
+  let segIdx = 1;
+
+  for (const block of blocks) {
+    const lines = block.split('\n').map((l) => l.trim()).filter(Boolean);
+    if (lines.length < 2) continue;
+
+    let timeLine = lines[0];
+    let textLines = lines.slice(1);
+    if (!timeLine.includes('-->') && lines.length >= 3) {
+      timeLine = lines[1];
+      textLines = lines.slice(2);
+    }
+    if (!timeLine.includes('-->')) continue;
+
+    const [startStr, endStr] = timeLine.split('-->');
+    const start = parseSRTTime(startStr);
+    const end = Math.max(start + 0.1, parseSRTTime(endStr));
+    const text = textLines.join(' ');
+    if (!text) continue;
+
+    const rawWords = text.split(/\s+/).filter(Boolean);
+    const wordDuration = (end - start) / Math.max(1, rawWords.length);
+    const words: Word[] = rawWords.map((w, wIdx) => ({
+      id: `w-${segIdx}-${wIdx + 1}`,
+      text: w,
+      start: Number((start + wIdx * wordDuration).toFixed(3)),
+      end: Number((start + (wIdx + 1) * wordDuration).toFixed(3)),
+      confidence: 1.0,
+    }));
+
+    segments.push({
+      id: `seg-${segIdx}`,
+      start: Number(start.toFixed(3)),
+      end: Number(end.toFixed(3)),
+      text,
+      words,
+    });
+    segIdx++;
+  }
+
+  return {
+    schemaVersion: 1,
+    language: 'en',
+    segments,
+  };
+}
+
+export function parseVTT(vttContent: string): Transcript {
+  // Strip WEBVTT header and parse identical to SRT
+  const clean = vttContent.replace(/^WEBVTT[^\n]*\n+/i, '');
+  return parseSRT(clean);
 }
 

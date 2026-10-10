@@ -13,6 +13,8 @@ import {
   generateSRT,
   generateVTT,
   generatePlainText,
+  parseSRT,
+  parseVTT,
 } from '../dist/index.js';
 
 describe('Contracts — Transcript Schemas', () => {
@@ -137,6 +139,37 @@ describe('Contracts — Subtitle Generation', () => {
   it('generates clean plain text', () => {
     const txt = generatePlainText(sampleTranscript);
     assert.equal(txt, 'Hello world\nWelcome to Capzee');
+  });
+
+  it('parses raw SRT content back into validated Transcript', () => {
+    const rawSrt = `1
+00:00:01,000 --> 00:00:03,500
+AutoCap and FluxoCut are awesome
+
+2
+00:00:04,000 --> 00:00:06,000
+Viral captions rendered fast`;
+    const parsed = parseSRT(rawSrt);
+    assert.equal(parsed.segments.length, 2);
+    assert.equal(parsed.segments[0].start, 1.0);
+    assert.equal(parsed.segments[0].end, 3.5);
+    assert.equal(parsed.segments[0].text, 'AutoCap and FluxoCut are awesome');
+    assert.ok(parsed.segments[0].words && parsed.segments[0].words.length > 0);
+  });
+
+  it('parses raw WebVTT content back into validated Transcript', () => {
+    const rawVtt = `WEBVTT
+
+cue-1
+00:00:00.500 --> 00:00:02.000
+No AI model needed
+
+cue-2
+00:00:02.500 --> 00:00:05.000
+Pure local rendering`;
+    const parsed = parseVTT(rawVtt);
+    assert.equal(parsed.segments.length, 2);
+    assert.equal(parsed.segments[0].text, 'No AI model needed');
   });
 });
 

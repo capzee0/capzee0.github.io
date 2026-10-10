@@ -72,7 +72,9 @@ export function CaptionOverlay({ segment, activeWordIndex, style }: CaptionOverl
               key={word.id}
               style={{
                 color: isActive ? style.activeWordColor : style.textColor,
-                transition: 'color 0.1s ease',
+                transform: isActive ? 'scale(1.14)' : 'scale(1.0)',
+                display: 'inline-block',
+                transition: 'all 0.1s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
               }}
             >
               {word.text}{i < segment.words!.length - 1 ? ' ' : ''}
