@@ -37,11 +37,14 @@ const envSchema = z.object({
   CAPZEE_TEMP_DIR: z.string().default(''),
 
   // LLM
-  CAPZEE_LLM_PROVIDER: z.enum(['mock', 'openai', 'anthropic', 'ollama', 'gemini']).default('mock'),
+  CAPZEE_LLM_PROVIDER: z.enum(['mock', 'openai', 'anthropic', 'ollama', 'gemini', 'groq']).default('mock'),
   CAPZEE_LLM_API_KEY: z.string().default(''),
   CAPZEE_LLM_MODEL: z.string().default(''),
   CAPZEE_OLLAMA_BASE_URL: z.string().default('http://localhost:11434'),
   CAPZEE_OLLAMA_MODEL: z.string().default('llama3.2'),
+
+  // Groq API (Instant Speech-to-Text & LLaMA 3.3)
+  GROQ_API_KEY: z.string().default(''),
 });
 
 export type AppConfig = z.infer<typeof envSchema>;

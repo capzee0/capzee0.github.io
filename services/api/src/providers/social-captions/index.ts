@@ -122,9 +122,78 @@ Return ONLY a valid JSON object with this structure:
   }
 }
 
+class GroqProvider implements SocialCaptionProvider {
+  name = 'groq';
+
+  async generate(request: SocialCaptionRequest): Promise<SocialCaptionOutput[]> {
+    const apiKey = process.env.GROQ_API_KEY || config.GROQ_API_KEY;
+    if (!apiKey) return mockGenerate(request);
+
+    const prompt = `You are a social media viral content strategist. Generate ${request.variants} engaging caption(s) in ${request.language} for a ${request.platform.replace('_', ' ')} short-form video.
+Video Transcript: "${request.transcriptText.slice(0, 600)}"
+${request.userContext ? `User Context: ${request.userContext}` : ''}
+Tone: ${request.tone}
+Include hashtags: ${request.includeHashtags}
+Include CTA: ${request.includeCallToAction}
+
+Output valid JSON ONLY with this schema:
+{
+  "captions": [
+    {
+      "hook": "attention grabbing line",
+      "mainCaption": "main body description",
+      "hashtags": ["#tag1", "#tag2"],
+      "callToAction": "call to action",
+      "shortTitle": "title under 30 chars"
+    }
+  ]
+}`;
+
+    try {
+      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: 'llama-3.3-70b-versatile',
+          messages: [{ role: 'user', content: prompt }],
+          response_format: { type: 'json_object' },
+        }),
+      });
+
+      if (!res.ok) {
+        console.warn(`[social-captions] Groq API returned ${res.status}, falling back to mock`);
+        return mockGenerate(request);
+      }
+
+      const data = await res.json() as { choices?: Array<{ message?: { content?: string } }> };
+      const content = data.choices?.[0]?.message?.content ?? '{}';
+      const parsed = JSON.parse(content) as { captions?: unknown[] };
+      if (Array.isArray(parsed.captions) && parsed.captions.length > 0) {
+        return parsed.captions.map((c) => ({
+          ...(c as object),
+          platform: request.platform,
+          language: request.language,
+          tone: request.tone,
+        })) as SocialCaptionOutput[];
+      }
+    } catch (err) {
+      console.warn('[social-captions] Groq generation error, using fallback:', err);
+    }
+
+    return mockGenerate(request);
+  }
+}
+
 // ─── Provider Factory ─────────────────────────────────────────────────────────
 
 function getProvider(): SocialCaptionProvider {
+  const apiKey = process.env.GROQ_API_KEY || config.GROQ_API_KEY;
+  if (config.CAPZEE_LLM_PROVIDER === 'groq' || (apiKey && config.CAPZEE_LLM_PROVIDER !== 'mock')) {
+    return new GroqProvider();
+  }
   switch (config.CAPZEE_LLM_PROVIDER) {
     case 'ollama':
       return new OllamaProvider();
