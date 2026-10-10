@@ -148,6 +148,83 @@ describe('Transcript API', () => {
   });
 });
 
+describe('Export and Render Endpoints', () => {
+  let projectId: string;
+
+  beforeEach(async () => {
+    const res = await request(app)
+      .post('/api/v1/projects')
+      .send({ title: 'Export Test Video' });
+    projectId = res.body.data.id;
+
+    const transcript = {
+      schemaVersion: 1,
+      language: 'en',
+      segments: [
+        {
+          id: 'seg-1',
+          start: 0.0,
+          end: 2.5,
+          text: 'Welcome to Capzee testing',
+          words: [
+            { id: 'w-1', text: 'Welcome', start: 0.0, end: 0.8, confidence: 0.95 },
+            { id: 'w-2', text: 'to', start: 0.8, end: 1.0, confidence: 0.95 },
+            { id: 'w-3', text: 'Capzee', start: 1.0, end: 1.8, confidence: 0.95 },
+            { id: 'w-4', text: 'testing', start: 1.8, end: 2.5, confidence: 0.95 },
+          ],
+        },
+      ],
+    };
+
+    await request(app)
+      .patch(`/api/v1/projects/${projectId}/transcript`)
+      .send({ transcript });
+  });
+
+  it('GET /api/v1/projects/:id/export?format=srt returns valid SRT attachment', async () => {
+    const res = await request(app).get(`/api/v1/projects/${projectId}/export?format=srt`);
+    assert.equal(res.status, 200);
+    assert.ok(res.text.includes('00:00:00,000 --> 00:00:02,500'));
+    assert.ok(res.text.includes('Welcome to Capzee testing'));
+  });
+
+  it('GET /api/v1/projects/:id/export?format=vtt returns valid WebVTT', async () => {
+    const res = await request(app).get(`/api/v1/projects/${projectId}/export?format=vtt`);
+    assert.equal(res.status, 200);
+    assert.ok(res.text.includes('WEBVTT'));
+    assert.ok(res.text.includes('00:00:00.000 --> 00:00:02.500'));
+  });
+
+  it('GET /api/v1/projects/:id/export?format=txt returns plain text', async () => {
+    const res = await request(app).get(`/api/v1/projects/${projectId}/export?format=txt`);
+    assert.equal(res.status, 200);
+    assert.equal(res.text.trim(), 'Welcome to Capzee testing');
+  });
+
+  it('GET /api/v1/projects/:id/export?format=json returns transcript JSON', async () => {
+    const res = await request(app).get(`/api/v1/projects/${projectId}/export?format=json`);
+    assert.equal(res.status, 200);
+    assert.equal(res.body.language, 'en');
+    assert.equal(res.body.segments.length, 1);
+  });
+
+  it('POST /api/v1/projects/:id/render returns 422 NO_MEDIA when no file uploaded', async () => {
+    const res = await request(app).post(`/api/v1/projects/${projectId}/render`).send({});
+    assert.equal(res.status, 422);
+    assert.equal(res.body.error.code, 'NO_MEDIA');
+  });
+
+  it('POST /api/v1/projects/:id/media uploads a file buffer', async () => {
+    const fakeMp4 = Buffer.from('fake mp4 video content for testing upload pipeline');
+    const res = await request(app)
+      .post(`/api/v1/projects/${projectId}/media`)
+      .attach('file', fakeMp4, 'test-sample.mp4');
+    assert.equal(res.status, 200);
+    assert.equal(res.body.success, true);
+    assert.ok(res.body.data.originalAssetPath);
+  });
+});
+
 describe('404 handler', () => {
   it('returns 404 for unknown routes', async () => {
     const res = await request(app).get('/api/v1/nonexistent');

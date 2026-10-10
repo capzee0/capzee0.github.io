@@ -71,6 +71,26 @@ export async function deleteProject(id: string) {
   return request<{ deleted: boolean }>(`/projects/${id}`, { method: 'DELETE' });
 }
 
+export async function uploadMedia(projectId: string, file: File) {
+  const formData = new FormData();
+  formData.append('file', file);
+  const url = `${BASE_URL}/projects/${projectId}/media`;
+  const res = await fetch(url, {
+    method: 'POST',
+    body: formData,
+  });
+  const json = await res.json().catch(() => ({ success: false, error: { code: 'PARSE_ERROR', message: 'Invalid server response' } }));
+  if (!res.ok || json.success === false) {
+    const err = json.error ?? { code: 'UNKNOWN_ERROR', message: 'Upload failed' };
+    throw new ApiError(err.code ?? 'UNKNOWN_ERROR', err.message ?? 'Upload failed', res.status);
+  }
+  return json.data;
+}
+
+export function getExportUrl(projectId: string, format: 'mp4' | 'srt' | 'vtt' | 'txt' | 'json') {
+  return `${BASE_URL}/projects/${projectId}/export?format=${format}`;
+}
+
 // ─── Transcription ────────────────────────────────────────────────────────────
 export async function startTranscription(
   projectId: string,

@@ -69,7 +69,21 @@ transcriptsRouter.post('/transcribe', async (req: Request, res: Response, next: 
     let stderr = '';
 
     child.stdout.on('data', (data: Buffer) => { stdout += data.toString(); });
-    child.stderr.on('data', (data: Buffer) => { stderr += data.toString(); });
+    child.stderr.on('data', (data: Buffer) => {
+      const text = data.toString();
+      stderr += text;
+      try {
+        const lines = text.split('\n').filter(Boolean);
+        for (const line of lines) {
+          const evt = JSON.parse(line);
+          if (evt.type === 'progress') {
+            updateJob(job.id, { progress: evt.progress, stage: evt.stage });
+          }
+        }
+      } catch {
+        // Not a JSON progress line
+      }
+    });
 
     child.on('close', (code: number | null) => {
       if (code === 0) {
@@ -91,8 +105,18 @@ transcriptsRouter.post('/transcribe', async (req: Request, res: Response, next: 
           updateProject(project.id, { status: 'error' });
         }
       } else {
-        const errorMsg = stderr.slice(-500); // last 500 chars to avoid log flooding
-        updateJob(job.id, { status: 'failed', errorCode: 'WORKER_EXIT', errorMessage: errorMsg });
+        let errorCode = 'WORKER_EXIT';
+        let errorMessage = stderr.slice(-500) || 'Transcription worker failed';
+        try {
+          const parsed = JSON.parse(stdout);
+          if (parsed.error) {
+            errorCode = parsed.error.code || errorCode;
+            errorMessage = parsed.error.message || errorMessage;
+          }
+        } catch {
+          // ignore
+        }
+        updateJob(job.id, { status: 'failed', errorCode, errorMessage });
         updateProject(project.id, { status: 'error' });
       }
     });

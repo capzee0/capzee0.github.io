@@ -7,6 +7,7 @@ import { Project } from '@capzee/contracts';
 
 interface StoredProject extends Project {
   _localVideoPath?: string;
+  renderedAssetPath?: string | null;
 }
 
 const projectStore = new Map<string, StoredProject>();
@@ -28,6 +29,7 @@ export function createProject(data: {
     status: 'created',
     durationSeconds: null,
     originalAssetPath: data.localVideoPath ?? null,
+    renderedAssetPath: null,
     createdAt: now,
     updatedAt: now,
     _localVideoPath: data.localVideoPath,

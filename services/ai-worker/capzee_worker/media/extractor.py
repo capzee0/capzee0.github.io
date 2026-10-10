@@ -67,6 +67,14 @@ def extract_audio(
             "or set CAPZEE_FFMPEG_PATH.",
             "FFMPEG_NOT_FOUND",
         )
+    except (PermissionError, OSError) as e:
+        if "policy" in str(e).lower() or getattr(e, "winerror", None) == 4551:
+            raise AudioExtractionError(
+                "FFmpeg execution was blocked by Windows Application Control or system policy. "
+                "Move FFmpeg to an allowed directory (e.g. C:\\Program Files\\ffmpeg\\bin) or update policy.",
+                "FFMPEG_POLICY_BLOCKED",
+            )
+        raise AudioExtractionError(f"Failed to execute ffmpeg: {e}", "FFMPEG_EXEC_ERROR")
     except subprocess.TimeoutExpired:
         raise AudioExtractionError("Audio extraction timed out (>5min)", "TIMEOUT")
 

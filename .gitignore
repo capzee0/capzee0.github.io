@@ -58,6 +58,8 @@ out/
 tmp/
 temp/
 *.tmp
+uploads/
+exports/
 
 # Test artifacts
 test-results/

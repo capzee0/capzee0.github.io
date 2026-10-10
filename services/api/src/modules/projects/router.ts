@@ -1,15 +1,52 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
+import multer from 'multer';
+import fs from 'fs';
+import path from 'path';
+import { spawn } from 'child_process';
 import {
   createProject,
   getProject,
   listProjects,
   updateProject,
   deleteProject,
+  getTranscript,
+  createJob,
+  updateJob,
 } from '../../db/local-store.js';
 import { createError } from '../../middleware/error.js';
+import {
+  generateSRT,
+  generateVTT,
+  generatePlainText,
+  Transcript,
+} from '@capzee/contracts';
 
 export const projectsRouter = Router();
+
+const UPLOAD_DIR = path.resolve(process.cwd(), 'uploads');
+if (!fs.existsSync(UPLOAD_DIR)) {
+  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+}
+
+const EXPORT_DIR = path.resolve(process.cwd(), 'exports');
+if (!fs.existsSync(EXPORT_DIR)) {
+  fs.mkdirSync(EXPORT_DIR, { recursive: true });
+}
+
+const storage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, UPLOAD_DIR),
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname) || '.mp4';
+    const name = `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
+    cb(null, name);
+  },
+});
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 500 * 1024 * 1024 }, // 500MB
+});
 
 const createProjectBody = z.object({
   title: z.string().min(1).max(255),
@@ -65,4 +102,220 @@ projectsRouter.delete('/:projectId', (req: Request, res: Response, next: NextFun
   const deleted = deleteProject(projectId);
   if (!deleted) return next(createError('Project not found', 404, 'PROJECT_NOT_FOUND'));
   res.json({ success: true, data: { deleted: true } });
+});
+
+// POST /projects/:projectId/media
+projectsRouter.post(
+  '/:projectId/media',
+  upload.single('file'),
+  (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const projectId = req.params.projectId as string;
+      const project = getProject(projectId);
+      if (!project) return next(createError('Project not found', 404, 'PROJECT_NOT_FOUND'));
+
+      if (!req.file) {
+        return next(createError('No file provided in form-data "file" field', 400, 'NO_FILE_PROVIDED'));
+      }
+
+      const filePath = path.resolve(req.file.path);
+      const updated = updateProject(projectId, {
+        originalAssetPath: filePath,
+        status: 'ready',
+      });
+
+      res.status(200).json({ success: true, data: updated });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// POST /projects/:projectId/render
+projectsRouter.post('/:projectId/render', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const projectId = req.params.projectId as string;
+    const project = getProject(projectId);
+    if (!project) return next(createError('Project not found', 404, 'PROJECT_NOT_FOUND'));
+
+    if (!project.originalAssetPath || !fs.existsSync(project.originalAssetPath)) {
+      return next(createError('No media file exists for this project', 422, 'NO_MEDIA'));
+    }
+
+    const rawTranscript = getTranscript(projectId);
+    if (!rawTranscript) {
+      return next(createError('No transcript found for this project. Transcribe first.', 422, 'NO_TRANSCRIPT'));
+    }
+
+    const transcript = rawTranscript as Transcript;
+    const job = createJob({ projectId: project.id, jobType: 'render' });
+    updateJob(job.id, { status: 'processing', stage: 'initializing', progress: 5 });
+    updateProject(project.id, { status: 'processing' });
+
+    // Write transcript to a temporary json file for the python worker
+    const tmpTranscriptPath = path.join(EXPORT_DIR, `transcript-${job.id}.json`);
+    fs.writeFileSync(tmpTranscriptPath, JSON.stringify(transcript), 'utf-8');
+
+    const outputFileName = `${project.id}-rendered-${Date.now()}.mp4`;
+    const outputPath = path.join(EXPORT_DIR, outputFileName);
+
+    const workerScript = path.resolve(
+      __dirname,
+      '../../../../ai-worker/capzee_worker/scripts/render_cli.py'
+    );
+    const pythonBin = process.env.PYTHON_PATH ?? 'python';
+
+    const args = [
+      workerScript,
+      '--video', project.originalAssetPath,
+      '--transcript', tmpTranscriptPath,
+      '--style', JSON.stringify(req.body.style ?? {}),
+      '--output', outputPath,
+      '--resolution', req.body.resolution ?? 'original',
+      '--job-id', job.id,
+    ];
+
+    const child = spawn(pythonBin, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+    let stdout = '';
+    let stderr = '';
+
+    child.stdout.on('data', (data: Buffer) => {
+      stdout += data.toString();
+    });
+
+    child.stderr.on('data', (data: Buffer) => {
+      stderr += data.toString();
+      // Try parsing progress event
+      try {
+        const lines = data.toString().split('\n').filter(Boolean);
+        for (const l of lines) {
+          const evt = JSON.parse(l);
+          if (evt.type === 'progress') {
+            updateJob(job.id, { progress: evt.progress, stage: evt.stage });
+          }
+        }
+      } catch {
+        // Not JSON progress event, ignore
+      }
+    });
+
+    child.on('close', (code: number | null) => {
+      // Clean up tmp transcript
+      try {
+        if (fs.existsSync(tmpTranscriptPath)) fs.unlinkSync(tmpTranscriptPath);
+      } catch {
+        // ignore
+      }
+
+      if (code === 0) {
+        try {
+          const result = JSON.parse(stdout);
+          if (result.success && fs.existsSync(outputPath)) {
+            updateProject(project.id, {
+              status: 'ready',
+              renderedAssetPath: outputPath,
+            });
+            updateJob(job.id, {
+              status: 'completed',
+              progress: 100,
+              stage: 'completed',
+              completedAt: new Date().toISOString(),
+            });
+            return;
+          }
+        } catch {
+          // fall through
+        }
+      }
+
+      // Handle failure
+      let errorCode = 'RENDER_FAILED';
+      let errorMessage = stderr.slice(-400) || 'Rendering failed';
+      try {
+        const parsedOut = JSON.parse(stdout);
+        if (parsedOut.error) {
+          errorCode = parsedOut.error.code || errorCode;
+          errorMessage = parsedOut.error.message || errorMessage;
+        }
+      } catch {
+        // use fallback
+      }
+
+      updateJob(job.id, {
+        status: 'failed',
+        errorCode,
+        errorMessage,
+      });
+      updateProject(project.id, { status: 'error' });
+    });
+
+    res.status(202).json({
+      success: true,
+      data: {
+        job: {
+          id: job.id,
+          status: 'processing',
+          progress: 5,
+        },
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /projects/:projectId/export?format=mp4|srt|vtt|txt|json
+projectsRouter.get('/:projectId/export', (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const projectId = req.params.projectId as string;
+    const project = getProject(projectId);
+    if (!project) return next(createError('Project not found', 404, 'PROJECT_NOT_FOUND'));
+
+    const format = String(req.query.format || 'srt').toLowerCase();
+    const rawTranscript = getTranscript(projectId);
+
+    if (format === 'mp4') {
+      if (!project.renderedAssetPath || !fs.existsSync(project.renderedAssetPath)) {
+        return next(createError('Rendered video not found. Please render the video first.', 404, 'RENDER_NOT_FOUND'));
+      }
+      return res.download(project.renderedAssetPath, `${project.title || 'captioned-video'}.mp4`);
+    }
+
+    if (!rawTranscript) {
+      return next(createError('No transcript available for export', 404, 'TRANSCRIPT_NOT_FOUND'));
+    }
+
+    const transcript = rawTranscript as Transcript;
+
+    if (format === 'srt') {
+      const srt = generateSRT(transcript);
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="${project.title || 'captions'}.srt"`);
+      return res.send(srt);
+    }
+
+    if (format === 'vtt') {
+      const vtt = generateVTT(transcript);
+      res.setHeader('Content-Type', 'text/vtt; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="${project.title || 'captions'}.vtt"`);
+      return res.send(vtt);
+    }
+
+    if (format === 'txt') {
+      const txt = generatePlainText(transcript);
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="${project.title || 'transcript'}.txt"`);
+      return res.send(txt);
+    }
+
+    if (format === 'json') {
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="${project.title || 'transcript'}.json"`);
+      return res.json(transcript);
+    }
+
+    return next(createError(`Unsupported export format: ${format}`, 400, 'INVALID_FORMAT'));
+  } catch (err) {
+    next(err);
+  }
 });

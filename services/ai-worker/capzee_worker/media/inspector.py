@@ -57,12 +57,25 @@ def inspect_media(video_path: str) -> MediaInfo:
             "or set CAPZEE_FFPROBE_PATH.",
             "FFPROBE_NOT_FOUND",
         )
+    except (PermissionError, OSError) as e:
+        if "policy" in str(e).lower() or getattr(e, "winerror", None) == 4551:
+            raise MediaInspectionError(
+                "FFprobe execution was blocked by Windows Application Control or system policy. "
+                "Move FFmpeg to an allowed directory (e.g. C:\\Program Files\\ffmpeg\\bin) or update policy.",
+                "FFPROBE_POLICY_BLOCKED",
+            )
+        raise MediaInspectionError(f"Failed to execute ffprobe: {e}", "FFPROBE_EXEC_ERROR")
     except subprocess.TimeoutExpired:
         raise MediaInspectionError("ffprobe timed out", "FFPROBE_TIMEOUT")
 
     if result.returncode != 0:
+        err = result.stderr.strip()
+        if "policy" in err.lower() or "blocked" in err.lower():
+            raise MediaInspectionError(
+                "FFprobe execution was blocked by system policy.", "FFPROBE_POLICY_BLOCKED"
+            )
         raise MediaInspectionError(
-            f"ffprobe failed: {result.stderr.strip()}", "FFPROBE_ERROR"
+            f"ffprobe failed: {err}", "FFPROBE_ERROR"
         )
 
     try:

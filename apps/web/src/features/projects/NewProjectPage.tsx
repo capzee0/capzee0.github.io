@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useDropzone } from 'react-dropzone';
 import { Upload, Video, AlertCircle, Loader2, CheckCircle2, FileVideo } from 'lucide-react';
 import { cn, formatFileSize, ACCEPTED_VIDEO_TYPES } from '@/lib/utils';
-import { createProject } from '@/services/api';
+import { createProject, uploadMedia } from '@/services/api';
 import { useProjectStore } from '@/stores/projectStore';
 
 const MAX_FILE_SIZE_BYTES = 500 * 1024 * 1024; // 500 MB
@@ -90,12 +90,19 @@ export function NewProjectPage() {
     try {
       const project = await createProject({
         title: title.trim(),
-        // In local mode, send the file path if available (Electron), else just title
       });
+
+      let serverAssetPath = null;
+      try {
+        const uploaded = await uploadMedia(project.id, selectedFile);
+        serverAssetPath = (uploaded as { originalAssetPath?: string })?.originalAssetPath ?? null;
+      } catch (uploadErr) {
+        console.warn('Backend media upload skipped or failed:', uploadErr);
+      }
 
       const fullProject = {
         ...project,
-        originalAssetPath: null,
+        originalAssetPath: serverAssetPath,
         localVideoUrl: URL.createObjectURL(selectedFile),
         durationSeconds: null,
       };
