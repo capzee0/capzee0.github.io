@@ -1,0 +1,159 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Base styles ──────────────────────────────────────────────────────────── */
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-bg-primary text-text-primary font-sans;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Reduce motion for accessibility */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-bg-secondary;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-surface-border rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-text-disabled;
+  }
+
+  /* Focus ring */
+  :focus-visible {
+    @apply outline-none ring-2 ring-accent-blue ring-offset-2 ring-offset-bg-primary;
+  }
+
+  /* Selection */
+  ::selection {
+    @apply bg-accent-blue/30 text-text-primary;
+  }
+}
+
+/* ── Component layer ─────────────────────────────────────────────────────── */
+@layer components {
+  /* Panels */
+  .panel {
+    @apply bg-bg-panel border border-surface-border rounded-lg;
+  }
+
+  .panel-elevated {
+    @apply bg-bg-elevated border border-surface-border rounded-lg shadow-panel;
+  }
+
+  /* Buttons */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2
+           rounded font-medium text-sm transition-all duration-150
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-blue
+           disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+
+  .btn-primary {
+    @apply btn bg-accent-blue hover:bg-blue-500 text-white;
+  }
+
+  .btn-secondary {
+    @apply btn bg-surface hover:bg-surface-hover text-text-primary border border-surface-border;
+  }
+
+  .btn-ghost {
+    @apply btn hover:bg-surface-hover text-text-secondary hover:text-text-primary;
+  }
+
+  .btn-danger {
+    @apply btn bg-status-error/10 hover:bg-status-error/20 text-status-error border border-status-error/30;
+  }
+
+  /* Inputs */
+  .input {
+    @apply w-full px-3 py-2 bg-bg-secondary border border-surface-border rounded
+           text-text-primary placeholder:text-text-muted text-sm
+           focus:outline-none focus:border-accent-blue focus:ring-1 focus:ring-accent-blue
+           transition-colors duration-150;
+  }
+
+  .label {
+    @apply block text-xs font-medium text-text-secondary mb-1;
+  }
+
+  /* Status badges */
+  .badge {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .badge-success { @apply badge bg-status-success/15 text-status-success; }
+  .badge-warning { @apply badge bg-status-warning/15 text-status-warning; }
+  .badge-error   { @apply badge bg-status-error/15 text-status-error; }
+  .badge-info    { @apply badge bg-status-info/15 text-status-info; }
+  .badge-neutral { @apply badge bg-surface text-text-secondary; }
+
+  /* Skeleton loader */
+  .skeleton {
+    @apply bg-surface-border rounded animate-pulse;
+  }
+
+  /* Divider */
+  .divider {
+    @apply border-t border-surface-border;
+  }
+}
+
+/* ── Utility layer ───────────────────────────────────────────────────────── */
+@layer utilities {
+  .text-gradient {
+    @apply bg-gradient-to-r from-accent-blue to-accent-violet bg-clip-text text-transparent;
+  }
+
+  .glow-blue {
+    box-shadow: 0 0 24px rgba(59, 130, 246, 0.35);
+  }
+
+  .scrollbar-thin {
+    scrollbar-width: thin;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}

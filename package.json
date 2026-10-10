@@ -1,0 +1,40 @@
+{
+  "name": "capzee",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Capzee — AI-powered video captioning and smart editing platform",
+  "workspaces": [
+    "apps/*",
+    "services/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n web,api -c cyan,yellow \"npm run dev:web\" \"npm run dev:api\"",
+    "dev:web": "npm run dev --workspace=apps/web",
+    "dev:api": "npm run dev --workspace=services/api",
+    "dev:desktop": "npm run dev --workspace=apps/desktop",
+    "build": "npm run build --workspace=packages/contracts && npm run build --workspace=apps/web && npm run build --workspace=services/api",
+    "build:web": "npm run build --workspace=apps/web",
+    "build:api": "npm run build --workspace=services/api",
+    "build:desktop": "npm run build --workspace=apps/desktop",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "format": "prettier --write \"**/*.{ts,tsx,js,json,md}\" --ignore-path .gitignore",
+    "clean": "rimraf apps/*/dist apps/*/node_modules services/*/dist services/*/node_modules packages/*/dist node_modules"
+  },
+  "devDependencies": {
+    "@rollup/wasm-node": "^4.64.5",
+    "concurrently": "^8.2.2",
+    "prettier": "^3.4.2",
+    "rimraf": "^6.0.1",
+    "typescript": "^5.7.3"
+  },
+  "overrides": {
+    "rollup": "npm:@rollup/wasm-node@^4.64.5"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  }
+}

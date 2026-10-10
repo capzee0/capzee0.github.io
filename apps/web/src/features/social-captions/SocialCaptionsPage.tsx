@@ -1,0 +1,305 @@
+import { useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import {
+  Instagram, Youtube, Globe, Loader2, AlertCircle, Copy,
+  Check, RefreshCw, ChevronLeft
+} from 'lucide-react';
+import { useProjectStore } from '@/stores/projectStore';
+import { generateSocialCaptions } from '@/services/api';
+import type { SocialCaptionOutput } from '@capzee/contracts';
+import { cn } from '@/lib/utils';
+
+const PLATFORMS = [
+  { id: 'instagram_reels', label: 'Instagram Reels', icon: Instagram, color: 'from-pink-500 to-orange-500' },
+  { id: 'youtube_shorts',  label: 'YouTube Shorts',  icon: Youtube,   color: 'from-red-500 to-red-700' },
+  { id: 'generic',         label: 'Generic Post',    icon: Globe,     color: 'from-blue-500 to-cyan-500' },
+] as const;
+
+const TONES = [
+  'conversational', 'professional', 'educational', 'funny',
+  'cinematic', 'inspirational', 'promotional',
+] as const;
+
+const LANGUAGES = [
+  { code: 'en', label: 'English' },
+  { code: 'ta', label: 'Tamil' },
+  { code: 'tanglish', label: 'Tanglish' },
+  { code: 'hi', label: 'Hindi' },
+] as const;
+
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+
+  async function handleCopy() {
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  return (
+    <button
+      onClick={handleCopy}
+      className="p-1.5 rounded hover:bg-surface-hover text-text-muted hover:text-text-primary transition-colors"
+      aria-label="Copy to clipboard"
+    >
+      {copied ? <Check className="w-3.5 h-3.5 text-status-success" /> : <Copy className="w-3.5 h-3.5" />}
+    </button>
+  );
+}
+
+export function SocialCaptionsPage() {
+  const { projectId } = useParams<{ projectId: string }>();
+  const navigate = useNavigate();
+  const { currentTranscript } = useProjectStore();
+
+  const [platform, setPlatform] = useState<typeof PLATFORMS[number]['id']>('instagram_reels');
+  const [tone, setTone] = useState<typeof TONES[number]>('conversational');
+  const [language, setLanguage] = useState<typeof LANGUAGES[number]['code']>('en');
+  const [variants, setVariants] = useState(2);
+  const [userContext, setUserContext] = useState('');
+  const [captions, setCaptions] = useState<SocialCaptionOutput[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function generate() {
+    if (!projectId) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await generateSocialCaptions(projectId, {
+        platform,
+        tone,
+        language,
+        variants,
+        includeHashtags: true,
+        includeCallToAction: true,
+        userContext: userContext.trim() || undefined,
+      });
+      setCaptions(result);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to generate captions.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="h-full flex flex-col">
+      {/* Header */}
+      <div className="flex items-center gap-3 px-6 py-5 border-b border-surface-border">
+        <button onClick={() => navigate(-1)} className="btn-ghost p-2">
+          <ChevronLeft className="w-4 h-4" />
+        </button>
+        <div>
+          <h1 className="text-xl font-bold">Social Captions</h1>
+          <p className="text-xs text-text-secondary mt-0.5">Generate captions for your social media posts</p>
+        </div>
+      </div>
+
+      <div className="flex-1 flex overflow-hidden">
+        {/* Settings sidebar */}
+        <div className="w-[280px] flex-shrink-0 border-r border-surface-border overflow-auto p-4 space-y-5">
+          {/* No transcript warning */}
+          {!currentTranscript && (
+            <div className="flex items-start gap-2 p-3 rounded-lg bg-status-warning/10 border border-status-warning/30 text-status-warning text-xs">
+              <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+              <span>No transcript available. Transcribe your video first.</span>
+            </div>
+          )}
+
+          {/* Platform */}
+          <section>
+            <p className="label mb-2">Platform</p>
+            <div className="space-y-1.5">
+              {PLATFORMS.map(({ id, label, icon: Icon }) => (
+                <button
+                  key={id}
+                  onClick={() => setPlatform(id)}
+                  className={cn(
+                    'w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-all',
+                    platform === id
+                      ? 'bg-accent-blue/10 border border-accent-blue/40 text-accent-blue'
+                      : 'bg-surface-DEFAULT border border-surface-border text-text-secondary hover:text-text-primary hover:bg-surface-hover'
+                  )}
+                >
+                  <Icon className="w-4 h-4" />
+                  {label}
+                </button>
+              ))}
+            </div>
+          </section>
+
+          {/* Tone */}
+          <section>
+            <label className="label" htmlFor="tone-select">Tone</label>
+            <select
+              id="tone-select"
+              className="input text-sm"
+              value={tone}
+              onChange={(e) => setTone(e.target.value as typeof TONES[number])}
+            >
+              {TONES.map((t) => (
+                <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>
+              ))}
+            </select>
+          </section>
+
+          {/* Language */}
+          <section>
+            <label className="label" htmlFor="lang-select">Output Language</label>
+            <select
+              id="lang-select"
+              className="input text-sm"
+              value={language}
+              onChange={(e) => setLanguage(e.target.value as typeof LANGUAGES[number]['code'])}
+            >
+              {LANGUAGES.map(({ code, label }) => (
+                <option key={code} value={code}>{label}</option>
+              ))}
+            </select>
+          </section>
+
+          {/* Variants */}
+          <section>
+            <div className="flex justify-between items-center mb-1">
+              <label className="label" htmlFor="variants-range">Variants</label>
+              <span className="text-xs text-text-muted">{variants}</span>
+            </div>
+            <input
+              id="variants-range"
+              type="range"
+              min={1}
+              max={3}
+              value={variants}
+              onChange={(e) => setVariants(parseInt(e.target.value))}
+              className="w-full accent-accent-blue"
+            />
+          </section>
+
+          {/* Context */}
+          <section>
+            <label className="label" htmlFor="user-context">Context / Description (optional)</label>
+            <textarea
+              id="user-context"
+              className="input text-sm resize-none"
+              rows={3}
+              placeholder="Add context about the video content..."
+              value={userContext}
+              onChange={(e) => setUserContext(e.target.value)}
+              maxLength={1000}
+            />
+          </section>
+
+          {/* Generate button */}
+          <button
+            onClick={generate}
+            disabled={loading || !currentTranscript}
+            className="btn-primary w-full text-sm"
+            id="generate-captions-btn"
+          >
+            {loading ? (
+              <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Generating…</>
+            ) : captions.length > 0 ? (
+              <><RefreshCw className="w-3.5 h-3.5" /> Regenerate</>
+            ) : (
+              'Generate Captions'
+            )}
+          </button>
+        </div>
+
+        {/* Results */}
+        <div className="flex-1 overflow-auto p-6 space-y-5">
+          {error && (
+            <div className="flex items-start gap-2 p-4 rounded-lg bg-status-error/10 border border-status-error/30 text-status-error text-sm">
+              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          {captions.length === 0 && !loading && !error && (
+            <div className="flex flex-col items-center justify-center py-24 text-center">
+              <div className="w-14 h-14 rounded-2xl bg-surface-DEFAULT flex items-center justify-center mb-4">
+                <Globe className="w-7 h-7 text-text-muted" />
+              </div>
+              <p className="text-text-secondary">Configure settings and click Generate</p>
+              <p className="text-xs text-text-muted mt-1">
+                Uses the mock provider by default (no API key needed).
+              </p>
+            </div>
+          )}
+
+          {captions.map((caption, i) => (
+            <div key={i} className="panel p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-sm text-text-primary">
+                  Variant {i + 1}
+                  {caption.shortTitle && (
+                    <span className="text-text-muted font-normal ml-2">· {caption.shortTitle}</span>
+                  )}
+                </h3>
+                <span className="badge badge-neutral capitalize">{caption.tone}</span>
+              </div>
+
+              {/* Hook */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-xs font-medium text-accent-blue uppercase tracking-wide">Hook</p>
+                  <CopyButton text={caption.hook} />
+                </div>
+                <p className="text-sm text-text-primary leading-relaxed bg-surface-DEFAULT p-3 rounded-md">
+                  {caption.hook}
+                </p>
+              </div>
+
+              {/* Caption */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-xs font-medium text-accent-violet uppercase tracking-wide">Caption</p>
+                  <CopyButton text={caption.mainCaption} />
+                </div>
+                <p className="text-sm text-text-primary leading-relaxed bg-surface-DEFAULT p-3 rounded-md whitespace-pre-line">
+                  {caption.mainCaption}
+                </p>
+              </div>
+
+              {/* Hashtags */}
+              {caption.hashtags.length > 0 && (
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-xs font-medium text-status-info uppercase tracking-wide">Hashtags</p>
+                    <CopyButton text={caption.hashtags.join(' ')} />
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {caption.hashtags.map((tag) => (
+                      <span key={tag} className="px-2 py-0.5 rounded-full bg-status-info/10 text-status-info text-xs">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* CTA */}
+              {caption.callToAction && (
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-xs font-medium text-status-success uppercase tracking-wide">Call to Action</p>
+                    <CopyButton text={caption.callToAction} />
+                  </div>
+                  <p className="text-sm text-text-secondary italic bg-surface-DEFAULT p-3 rounded-md">
+                    {caption.callToAction}
+                  </p>
+                </div>
+              )}
+
+              {/* Copy all */}
+              <CopyButton
+                text={[caption.hook, '', caption.mainCaption, '', caption.hashtags.join(' '), '', caption.callToAction].join('\n')}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
