@@ -9,8 +9,11 @@ interface AuthState {
   isAuthModalOpen: boolean;
   isConfigured: boolean;
 
-  openAuthModal: () => void;
+  authModalMode: 'signin' | 'signup';
+
+  openAuthModal: (mode?: 'signin' | 'signup') => void;
   closeAuthModal: () => void;
+  setAuthModalMode: (mode: 'signin' | 'signup') => void;
   initialize: () => Promise<void>;
   signInWithGoogle: () => Promise<{ error: string | null }>;
   signInWithGithub: () => Promise<{ error: string | null }>;
@@ -24,10 +27,12 @@ export const useAuthStore = create<AuthState>((set) => ({
   session: null,
   loading: true,
   isAuthModalOpen: false,
+  authModalMode: 'signin',
   isConfigured: isSupabaseConfigured,
 
-  openAuthModal: () => set({ isAuthModalOpen: true }),
+  openAuthModal: (mode = 'signin') => set({ isAuthModalOpen: true, authModalMode: mode }),
   closeAuthModal: () => set({ isAuthModalOpen: false }),
+  setAuthModalMode: (mode) => set({ authModalMode: mode }),
 
   initialize: async () => {
     try {

@@ -20,7 +20,7 @@ export function UserMenu() {
   if (!user) {
     return (
       <button
-        onClick={openAuthModal}
+        onClick={() => openAuthModal('signin')}
         className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/90 hover:bg-white text-[#2F3020] font-bold text-xs border border-[#2F3020]/20 shadow-2xs hover:border-[#16A34A] transition-all cursor-pointer"
         id="header-sign-in-btn"
       >
