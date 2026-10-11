@@ -161,21 +161,30 @@ export function DashboardPage() {
     async function fetchProjects() {
       try {
         const data = await listProjects();
-        setProjects(data.map((p) => {
-          const ex = projects.find((e) => e.id === p.id);
+        const localProjects = useProjectStore.getState().projects;
+        const serverIds = new Set(data.map((p) => p.id));
+        const mergedServerProjects = data.map((p) => {
+          const local = localProjects.find((e) => e.id === p.id);
           return {
             ...p,
-            originalAssetPath: ex?.originalAssetPath ?? null,
-            localVideoUrl: ex?.localVideoUrl ?? null,
-            thumbnailUrl: ex?.thumbnailUrl ?? null,
-            qualityLabel: ex?.qualityLabel ?? null,
-            aspectRatio: ex?.aspectRatio ?? null
+            originalAssetPath: (p as { originalAssetPath?: string | null })?.originalAssetPath ?? local?.originalAssetPath ?? null,
+            localVideoUrl: local?.localVideoUrl ?? null,
+            thumbnailUrl: local?.thumbnailUrl ?? null,
+            qualityLabel: local?.qualityLabel ?? null,
+            aspectRatio: local?.aspectRatio ?? null,
           };
-        }));
-      } catch { /* use persisted */ } finally { setLoading(false); }
+        });
+        // Preserve local projects that haven't synced to server yet
+        const localOnly = localProjects.filter((p) => !serverIds.has(p.id));
+        setProjects([...mergedServerProjects, ...localOnly]);
+      } catch {
+        /* use persisted projects in store */
+      } finally {
+        setLoading(false);
+      }
     }
     fetchProjects();
-  }, []);
+  }, [setProjects]);
 
   const onDrop = useCallback((accepted: File[], rejected: unknown[]) => {
     setUploadError(null);
@@ -219,7 +228,11 @@ export function DashboardPage() {
       setLocalVideoFile(selectedFile);
 
       setCreationStep("Uploading media...");
-      await uploadMedia(proj.id, selectedFile);
+      try {
+        await uploadMedia(proj.id, selectedFile);
+      } catch (uploadErr) {
+        console.warn("Media cloud upload deferred / continuing locally:", uploadErr);
+      }
 
       setCreationStep("Generating captions...");
       const job = await startTranscription(proj.id, {
@@ -540,7 +553,14 @@ export function DashboardPage() {
                   <CompactProjectCard
                     key={project.id}
                     project={project}
-                    onOpen={() => navigate(`/editor/${project.id}`)}
+                    onOpen={() => {
+                      const curr = useProjectStore.getState().currentProject;
+                      if (curr?.id !== project.id) {
+                        setLocalVideoFile(null);
+                      }
+                      setCurrentProject(project);
+                      navigate(`/editor/${project.id}`);
+                    }}
                     onDelete={(e) => requestDelete(project, e)}
                     deleting={deleting === project.id}
                   />
@@ -661,11 +681,11 @@ function CompactProjectCard({
           type="button"
           onClick={onDelete}
           disabled={deleting}
-          className="pointer-events-auto w-5.5 h-5.5 rounded-full bg-[#2F3020]/80 hover:bg-red-600 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all shadow-xs"
+          className="pointer-events-auto w-6 h-6 rounded-full bg-[#2F3020]/80 hover:bg-red-600 text-white flex items-center justify-center opacity-90 sm:opacity-0 sm:group-hover:opacity-100 transition-all shadow-xs cursor-pointer active:scale-95"
           title={`Delete ${project.title}`}
           aria-label={`Delete ${project.title}`}
         >
-          {deleting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+          {deleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
         </button>
       </div>
 

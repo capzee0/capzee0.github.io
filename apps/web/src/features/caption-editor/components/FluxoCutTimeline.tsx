@@ -171,13 +171,15 @@ export function FluxoCutTimeline({
   const handleTrimStart = (e: React.MouseEvent, seg: Segment) => {
     e.stopPropagation();
     if (!timelineRef.current || !onUpdateSegmentTime) return;
-    const rect = timelineRef.current.getBoundingClientRect();
+    const el = timelineRef.current;
+    const rect = el.getBoundingClientRect();
+    const contentWidth = el.scrollWidth || (rect.width * Math.max(1, zoom));
     const initialStart = seg.start;
     const startX = e.clientX;
 
     const onMouseMove = (ev: globalThis.MouseEvent) => {
       const deltaX = ev.clientX - startX;
-      const deltaTime = (deltaX / rect.width) * safeDuration;
+      const deltaTime = (deltaX / contentWidth) * safeDuration;
       const newStart = Math.max(0, Math.min(seg.end - 0.2, initialStart + deltaTime));
       onUpdateSegmentTime(seg.id, Number(newStart.toFixed(2)), seg.end);
     };
@@ -194,13 +196,15 @@ export function FluxoCutTimeline({
   const handleTrimEnd = (e: React.MouseEvent, seg: Segment) => {
     e.stopPropagation();
     if (!timelineRef.current || !onUpdateSegmentTime) return;
-    const rect = timelineRef.current.getBoundingClientRect();
+    const el = timelineRef.current;
+    const rect = el.getBoundingClientRect();
+    const contentWidth = el.scrollWidth || (rect.width * Math.max(1, zoom));
     const initialEnd = seg.end;
     const startX = e.clientX;
 
     const onMouseMove = (ev: globalThis.MouseEvent) => {
       const deltaX = ev.clientX - startX;
-      const deltaTime = (deltaX / rect.width) * safeDuration;
+      const deltaTime = (deltaX / contentWidth) * safeDuration;
       const newEnd = Math.max(seg.start + 0.2, Math.min(safeDuration, initialEnd + deltaTime));
       onUpdateSegmentTime(seg.id, seg.start, Number(newEnd.toFixed(2)));
     };

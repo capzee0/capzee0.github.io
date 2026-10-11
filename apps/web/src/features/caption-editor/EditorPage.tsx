@@ -60,7 +60,7 @@ export function EditorPage() {
 
   // Resizable layout (Center Video Canvas vs Right Studio Panel)
   const [rightPanelWidth, setRightPanelWidth] = useState(380);
-  const [timelineHeight, setTimelineHeight] = useState(138);
+  const [timelineHeight, setTimelineHeight] = useState(156);
 
   const isResizingRightPanel = useRef(false);
   const isResizingTimeline = useRef(false);
@@ -136,11 +136,12 @@ export function EditorPage() {
         }
 
         // Video source resolution
-        if (localVideoFile) {
+        const storedProject = projects.find((p) => p.id === projectId) || project;
+        if (localVideoFile && currentProject?.id === projectId) {
           setVideoSrc(URL.createObjectURL(localVideoFile));
-        } else if ((project as { localVideoUrl?: string })?.localVideoUrl) {
-          setVideoSrc((project as { localVideoUrl?: string }).localVideoUrl!);
-        } else if (project?.originalAssetPath) {
+        } else if (storedProject?.localVideoUrl) {
+          setVideoSrc(storedProject.localVideoUrl);
+        } else if (storedProject?.originalAssetPath) {
           setVideoSrc(getMediaUrl(projectId!));
         }
 
@@ -148,22 +149,21 @@ export function EditorPage() {
         const hasSegments = Boolean(currentTranscript?.segments && currentTranscript.segments.length > 0);
         if (!hasSegments) {
           let loaded = false;
-          if (project?.status === 'transcribed') {
-            try {
-              const transcript = await getTranscript(projectId!);
-              if (transcript?.segments?.length) {
-                const chunked = {
-                  ...transcript,
-                  segments: chunkWordsIntoSegments(transcript.segments, 5),
-                };
-                setCurrentTranscript(chunked);
-                setActiveSegment(chunked.segments[0] || null);
-                loaded = true;
-              }
-            } catch {
-              // fallback
+          try {
+            const transcript = await getTranscript(projectId!);
+            if (transcript?.segments?.length) {
+              const chunked = {
+                ...transcript,
+                segments: chunkWordsIntoSegments(transcript.segments, 5),
+              };
+              setCurrentTranscript(chunked);
+              setActiveSegment(chunked.segments[0] || null);
+              loaded = true;
             }
+          } catch {
+            // Not yet generated on backend
           }
+
           if (!loaded) {
             const demo = getDemoTranscript('en');
             setCurrentTranscript(demo);
@@ -182,12 +182,14 @@ export function EditorPage() {
     load();
   }, [projectId]);
 
-  // Sync video time with subtitle overlay and word index
+  // Sync video time with subtitle overlay and word index (60fps rAF when playing)
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
-    const onTimeUpdate = () => {
+    let animFrameId: number | null = null;
+
+    const syncTime = () => {
       const t = video.currentTime;
       setCurrentTime(t);
 
@@ -197,7 +199,7 @@ export function EditorPage() {
         ) ?? null;
         setActiveSegment(seg);
 
-        if (seg?.words) {
+        if (seg?.words && seg.words.length > 0) {
           const wordIdx = seg.words.findIndex(
             (w) => t >= w.start && t <= w.end
           );
@@ -208,12 +210,38 @@ export function EditorPage() {
       }
     };
 
-    const onDurationChange = () => setDuration(video.duration || 0);
-    const onPlay = () => setPlaying(true);
-    const onPause = () => setPlaying(false);
-    const onEnded = () => setPlaying(false);
+    const loop = () => {
+      syncTime();
+      if (!video.paused && !video.ended) {
+        animFrameId = requestAnimationFrame(loop);
+      }
+    };
 
-    video.addEventListener('timeupdate', onTimeUpdate);
+    const onPlay = () => {
+      setPlaying(true);
+      if (animFrameId) cancelAnimationFrame(animFrameId);
+      animFrameId = requestAnimationFrame(loop);
+    };
+
+    const onPause = () => {
+      setPlaying(false);
+      if (animFrameId) cancelAnimationFrame(animFrameId);
+      syncTime();
+    };
+
+    const onEnded = () => {
+      setPlaying(false);
+      if (animFrameId) cancelAnimationFrame(animFrameId);
+      syncTime();
+    };
+
+    const onDurationChange = () => {
+      if (video.duration && !isNaN(video.duration)) {
+        setDuration(video.duration);
+      }
+    };
+
+    video.addEventListener('timeupdate', syncTime);
     video.addEventListener('durationchange', onDurationChange);
     video.addEventListener('loadedmetadata', onDurationChange);
     video.addEventListener('play', onPlay);
@@ -221,7 +249,8 @@ export function EditorPage() {
     video.addEventListener('ended', onEnded);
 
     return () => {
-      video.removeEventListener('timeupdate', onTimeUpdate);
+      if (animFrameId) cancelAnimationFrame(animFrameId);
+      video.removeEventListener('timeupdate', syncTime);
       video.removeEventListener('durationchange', onDurationChange);
       video.removeEventListener('loadedmetadata', onDurationChange);
       video.removeEventListener('play', onPlay);
@@ -459,14 +488,24 @@ export function EditorPage() {
   function togglePlay() {
     const video = videoRef.current;
     if (!video) return;
-    if (playing) video.pause();
-    else video.play();
+    if (playing) {
+      video.pause();
+    } else {
+      video.play().catch((err) => {
+        console.warn('Playback deferred / autoplay policy:', err);
+        setPlaying(false);
+      });
+    }
   }
 
   function seekTo(seconds: number) {
     const video = videoRef.current;
-    if (!video) return;
-    video.currentTime = Math.max(0, Math.min(seconds, duration));
+    const maxDur = duration > 0 ? duration : (video?.duration && !isNaN(video.duration) ? video.duration : 20.5);
+    const target = Math.max(0, Math.min(seconds, maxDur));
+    setCurrentTime(target);
+    if (video) {
+      video.currentTime = target;
+    }
   }
 
   async function handleStartTranscription(opts: {
@@ -689,6 +728,9 @@ export function EditorPage() {
                     playsInline
                     crossOrigin="anonymous"
                     className="w-full h-full object-contain bg-black"
+                    onError={() => {
+                      console.warn("Video failed to play from source:", videoSrc);
+                    }}
                   />
 
                   {/* Animated CapCut Captions Overlay */}
