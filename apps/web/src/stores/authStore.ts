@@ -53,7 +53,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin,
+          redirectTo: `${window.location.origin}/dashboard`,
         },
       });
       if (error) return { error: error.message };
@@ -68,7 +68,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'github',
         options: {
-          redirectTo: window.location.origin,
+          redirectTo: `${window.location.origin}/dashboard`,
         },
       });
       if (error) return { error: error.message };

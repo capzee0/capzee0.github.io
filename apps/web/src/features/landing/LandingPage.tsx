@@ -4,6 +4,7 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { UserMenu } from '@/components/auth/UserMenu';
+import { useAuthStore } from '@/stores/authStore';
 
 const features = [
   {
@@ -52,6 +53,15 @@ const presets = [
 
 export function LandingPage() {
   const navigate = useNavigate();
+  const { user, openAuthModal } = useAuthStore();
+
+  const handleGoToApp = () => {
+    if (user) {
+      navigate('/dashboard');
+    } else {
+      openAuthModal();
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#D96846] text-[#2F3020] overflow-x-hidden font-sans">
@@ -68,11 +78,11 @@ export function LandingPage() {
           <div className="flex items-center gap-3">
             <UserMenu />
             <button
-              onClick={() => navigate('/dashboard')}
+              onClick={handleGoToApp}
               className="button-secondary text-sm py-2 px-5 font-bold shadow-sm cursor-pointer"
               id="hero-open-app-btn"
             >
-              Open App
+              {user ? 'Open Studio' : 'Open App'}
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -110,19 +120,19 @@ export function LandingPage() {
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <button
-              onClick={() => navigate('/dashboard')}
-              className="px-8 py-3.5 bg-[#FAF7F5] hover:bg-white text-[#2F3020] font-extrabold rounded-lg shadow-lg border-2 border-[#2F3020]/20 flex items-center justify-center gap-2 transition-all transform hover:-translate-y-0.5"
+              onClick={handleGoToApp}
+              className="px-8 py-3.5 bg-[#FAF7F5] hover:bg-white text-[#2F3020] font-extrabold rounded-lg shadow-lg border-2 border-[#2F3020]/20 flex items-center justify-center gap-2 transition-all transform hover:-translate-y-0.5 cursor-pointer"
               id="hero-start-btn"
             >
               Start Captioning
               <ArrowRight className="w-4 h-4 text-[#16A34A]" />
             </button>
             <button
-              onClick={() => navigate('/dashboard')}
-              className="button-secondary text-base px-8 py-3.5 shadow-lg font-bold"
+              onClick={handleGoToApp}
+              className="button-secondary text-base px-8 py-3.5 shadow-lg font-bold cursor-pointer"
               id="hero-dashboard-btn"
             >
-              View Dashboard
+              {user ? 'View Dashboard' : 'Sign in to Dashboard'}
             </button>
           </div>
         </div>
@@ -186,8 +196,8 @@ export function LandingPage() {
             FFmpeg and Python required for full functionality.
           </p>
           <button
-            onClick={() => navigate('/dashboard')}
-            className="button-secondary text-base px-10 py-3.5 shadow-lg font-bold"
+            onClick={handleGoToApp}
+            className="button-secondary text-base px-10 py-3.5 shadow-lg font-bold cursor-pointer"
             id="cta-start-btn"
           >
             Import a Video

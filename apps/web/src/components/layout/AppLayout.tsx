@@ -124,8 +124,8 @@ export function AppLayout() {
   }, [location.pathname]);
 
   const { user, signOut, openAuthModal } = useAuthStore();
-  const userEmail = user?.email || "thamodharangpm@gmail.com";
-  const userInitial = userEmail[0].toUpperCase();
+  const userEmail = user?.email || "User";
+  const userInitial = (user?.email ? user.email[0] : "U").toUpperCase();
 
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#D96846] font-sans select-none text-[#2F3020]">
