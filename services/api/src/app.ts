@@ -16,9 +16,22 @@ export function createApp() {
   // ─── Security ──────────────────────────────────────────────────────────────
   app.use(helmet());
   app.use(cors({
-    origin: config.WEB_URL,
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps, curl, or server-to-server)
+      if (!origin) return callback(null, true);
+      const allowed = [
+        config.WEB_URL,
+        'https://capzee0.github.io',
+        'http://localhost:5173',
+        'http://localhost:5174',
+      ].filter(Boolean);
+      if (allowed.includes(origin) || origin.endsWith('.github.io')) {
+        return callback(null, true);
+      }
+      return callback(null, true); // Allow all during development/production transition
+    },
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'apikey'],
     credentials: true,
   }));
 

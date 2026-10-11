@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: capzee-api
+    env: node
+    plan: free
+    buildCommand: npm install && npm run build --workspace=@capzee/contracts && npm run build --workspace=@capzee/api
+    startCommand: npm run start --workspace=@capzee/api
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: API_HOST
+        value: 0.0.0.0
+      - key: WEB_URL
+        value: https://capzee0.github.io
+      - key: CAPZEE_PROCESSING_MODE
+        value: local
+      - key: SUPABASE_URL
+        value: https://zmpimzfwqcmjqkrisxej.supabase.co
+      - key: SUPABASE_ANON_KEY
+        value: sb_publishable_10VFscGJGtkahLxCZmoSiw_FehkqHUV

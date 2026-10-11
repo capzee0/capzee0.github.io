@@ -41,9 +41,9 @@ tryLoadEnv();
 
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
-  API_HOST: z.string().default('127.0.0.1'),
-  API_PORT: z.coerce.number().int().min(1024).max(65535).default(4000),
-  WEB_URL: z.string().url().default('http://localhost:5173'),
+  API_HOST: z.string().default(process.env.API_HOST || (process.env.NODE_ENV === 'production' ? '0.0.0.0' : '127.0.0.1')),
+  API_PORT: z.coerce.number().int().min(1).max(65535).default(Number(process.env.PORT || process.env.API_PORT) || 4000),
+  WEB_URL: z.string().default(process.env.WEB_URL || 'https://capzee0.github.io'),
 
   // Supabase — optional in local mode
   SUPABASE_URL: z.string().url().optional(),
