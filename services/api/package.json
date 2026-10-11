@@ -5,7 +5,7 @@
   "description": "Capzee REST API server",
   "main": "dist/server.js",
   "scripts": {
-    "dev": "tsx watch src/server.ts",
+    "dev": "tsc && concurrently -k \"tsc -w --preserveWatchOutput\" \"node --watch dist/server.js\"",
     "build": "tsc",
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit",

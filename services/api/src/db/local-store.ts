@@ -1,8 +1,10 @@
 /**
- * Local in-memory store for projects in local processing mode.
+ * Local file-backed store for projects in local processing mode.
  * In cloud mode, this would be replaced by Supabase PostgreSQL.
  */
 import { randomUUID } from 'crypto';
+import fs from 'fs';
+import path from 'path';
 import { Project } from '@capzee/contracts';
 
 interface StoredProject extends Project {
@@ -13,6 +15,47 @@ interface StoredProject extends Project {
 const projectStore = new Map<string, StoredProject>();
 const transcriptStore = new Map<string, unknown>();
 const jobStore = new Map<string, unknown>();
+
+const STORE_DIR = path.resolve(__dirname, '../../uploads');
+const STORE_FILE = path.join(STORE_DIR, 'local-store.json');
+
+function saveToDisk() {
+  try {
+    if (!fs.existsSync(STORE_DIR)) {
+      fs.mkdirSync(STORE_DIR, { recursive: true });
+    }
+    const data = {
+      projects: Array.from(projectStore.entries()),
+      transcripts: Array.from(transcriptStore.entries()),
+      jobs: Array.from(jobStore.entries()),
+    };
+    fs.writeFileSync(STORE_FILE, JSON.stringify(data, null, 2), 'utf-8');
+  } catch (err) {
+    console.warn('[store] Failed to persist store to disk:', err);
+  }
+}
+
+function loadFromDisk() {
+  try {
+    if (fs.existsSync(STORE_FILE)) {
+      const raw = fs.readFileSync(STORE_FILE, 'utf-8');
+      const data = JSON.parse(raw);
+      if (Array.isArray(data.projects)) {
+        for (const [k, v] of data.projects) projectStore.set(k, v);
+      }
+      if (Array.isArray(data.transcripts)) {
+        for (const [k, v] of data.transcripts) transcriptStore.set(k, v);
+      }
+      if (Array.isArray(data.jobs)) {
+        for (const [k, v] of data.jobs) jobStore.set(k, v);
+      }
+    }
+  } catch (err) {
+    console.warn('[store] Failed to load store from disk:', err);
+  }
+}
+
+loadFromDisk();
 
 // ─── Projects ─────────────────────────────────────────────────────────────────
 
@@ -35,6 +78,7 @@ export function createProject(data: {
     _localVideoPath: data.localVideoPath,
   };
   projectStore.set(project.id, project);
+  saveToDisk();
   return project;
 }
 
@@ -64,17 +108,21 @@ export function updateProject(
     updatedAt: new Date().toISOString(),
   };
   projectStore.set(id, updated);
+  saveToDisk();
   return updated;
 }
 
 export function deleteProject(id: string): boolean {
-  return projectStore.delete(id);
+  const result = projectStore.delete(id);
+  if (result) saveToDisk();
+  return result;
 }
 
 // ─── Transcripts ──────────────────────────────────────────────────────────────
 
 export function setTranscript(projectId: string, transcript: unknown): void {
   transcriptStore.set(projectId, transcript);
+  saveToDisk();
 }
 
 export function getTranscript(projectId: string): unknown | undefined {
@@ -118,6 +166,7 @@ export function createJob(data: {
     completedAt: null,
   };
   jobStore.set(job.id, job);
+  saveToDisk();
   return job;
 }
 
@@ -133,5 +182,6 @@ export function updateJob(
   if (!existing) return null;
   const updated: StoredJob = { ...existing, ...updates, id: existing.id };
   jobStore.set(id, updated);
+  saveToDisk();
   return updated;
 }

@@ -11,8 +11,8 @@ import { cn } from '@/lib/utils';
 
 const PLATFORMS = [
   { id: 'instagram_reels', label: 'Instagram Reels', icon: Instagram, color: 'from-pink-500 to-orange-500' },
-  { id: 'youtube_shorts',  label: 'YouTube Shorts',  icon: Youtube,   color: 'from-red-500 to-red-700' },
-  { id: 'generic',         label: 'Generic Post',    icon: Globe,     color: 'from-blue-500 to-cyan-500' },
+  { id: 'youtube_shorts', label: 'YouTube Shorts', icon: Youtube, color: 'from-red-500 to-red-700' },
+  { id: 'generic', label: 'Generic Post', icon: Globe, color: 'from-forest to-olive' },
 ] as const;
 
 const TONES = [
@@ -39,10 +39,10 @@ function CopyButton({ text }: { text: string }) {
   return (
     <button
       onClick={handleCopy}
-      className="p-1.5 rounded hover:bg-surface-hover text-text-muted hover:text-text-primary transition-colors"
+      className="p-1.5 rounded hover:bg-[#CDCBD6] text-[#2F3020]/70 hover:text-[#2F3020] transition-colors"
       aria-label="Copy to clipboard"
     >
-      {copied ? <Check className="w-3.5 h-3.5 text-status-success" /> : <Copy className="w-3.5 h-3.5" />}
+      {copied ? <Check className="w-3.5 h-3.5 text-[#16A34A]" /> : <Copy className="w-3.5 h-3.5" />}
     </button>
   );
 }
@@ -84,24 +84,24 @@ export function SocialCaptionsPage() {
   }
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col bg-[#D96846] text-[#2F3020]">
       {/* Header */}
-      <div className="flex items-center gap-3 px-6 py-5 border-b border-surface-border">
-        <button onClick={() => navigate(-1)} className="btn-ghost p-2">
+      <div className="flex items-center gap-3 px-6 py-5 border-b border-[#2F3020]/15 bg-[#D96846]">
+        <button onClick={() => navigate(-1)} className="p-2 rounded hover:bg-[#2F3020]/10 text-[#2F3020]">
           <ChevronLeft className="w-4 h-4" />
         </button>
         <div>
-          <h1 className="text-xl font-bold">Social Captions</h1>
-          <p className="text-xs text-text-secondary mt-0.5">Generate captions for your social media posts</p>
+          <h1 className="text-2xl font-black text-[#2F3020] tracking-tight">Social Captions</h1>
+          <p className="text-xs text-[#2F3020]/80 mt-0.5 font-medium">Generate viral hooks and hashtags · Capzee Studio</p>
         </div>
       </div>
 
       <div className="flex-1 flex overflow-hidden">
-        {/* Settings sidebar */}
-        <div className="w-[280px] flex-shrink-0 border-r border-surface-border overflow-auto p-4 space-y-5">
+        {/* Settings sidebar in Lavender */}
+        <div className="w-[280px] flex-shrink-0 border-r border-[#2F3020]/15 bg-[#CDCBD6] overflow-auto p-4 space-y-5 text-[#2F3020]">
           {/* No transcript warning */}
           {!currentTranscript && (
-            <div className="flex items-start gap-2 p-3 rounded-lg bg-status-warning/10 border border-status-warning/30 text-status-warning text-xs">
+            <div className="flex items-start gap-2 p-3 rounded-lg bg-[#FAF7F5] border border-amber-600/30 text-amber-800 text-xs font-semibold shadow-sm">
               <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
               <span>No transcript available. Transcribe your video first.</span>
             </div>
@@ -109,17 +109,17 @@ export function SocialCaptionsPage() {
 
           {/* Platform */}
           <section>
-            <p className="label mb-2">Platform</p>
+            <p className="label text-[#2F3020] font-bold mb-2">Platform</p>
             <div className="space-y-1.5">
               {PLATFORMS.map(({ id, label, icon: Icon }) => (
                 <button
                   key={id}
                   onClick={() => setPlatform(id)}
                   className={cn(
-                    'w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-all',
+                    'w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm font-semibold transition-all',
                     platform === id
-                      ? 'bg-accent-blue/10 border border-accent-blue/40 text-accent-blue'
-                      : 'bg-surface-DEFAULT border border-surface-border text-text-secondary hover:text-text-primary hover:bg-surface-hover'
+                      ? 'bg-[#16A34A] text-white shadow-sm'
+                      : 'bg-[#FAF7F5] border border-[#2F3020]/15 text-[#2F3020] hover:bg-[#FAF7F5]/80'
                   )}
                 >
                   <Icon className="w-4 h-4" />
@@ -172,7 +172,7 @@ export function SocialCaptionsPage() {
               max={3}
               value={variants}
               onChange={(e) => setVariants(parseInt(e.target.value))}
-              className="w-full accent-accent-blue"
+              className="w-full accent-[#16A34A]"
             />
           </section>
 
@@ -243,7 +243,7 @@ export function SocialCaptionsPage() {
               {/* Hook */}
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <p className="text-xs font-medium text-accent-blue uppercase tracking-wide">Hook</p>
+                  <p className="text-xs font-semibold text-[#16A34A] uppercase tracking-wide">Hook</p>
                   <CopyButton text={caption.hook} />
                 </div>
                 <p className="text-sm text-text-primary leading-relaxed bg-surface-DEFAULT p-3 rounded-md">
@@ -254,7 +254,7 @@ export function SocialCaptionsPage() {
               {/* Caption */}
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <p className="text-xs font-medium text-accent-violet uppercase tracking-wide">Caption</p>
+                  <p className="text-xs font-semibold text-[#2F3020] uppercase tracking-wide">Caption</p>
                   <CopyButton text={caption.mainCaption} />
                 </div>
                 <p className="text-sm text-text-primary leading-relaxed bg-surface-DEFAULT p-3 rounded-md whitespace-pre-line">

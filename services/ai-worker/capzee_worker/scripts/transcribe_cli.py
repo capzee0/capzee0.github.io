@@ -28,6 +28,7 @@ def main() -> None:
     parser.add_argument("--video", required=True, help="Path to input video file")
     parser.add_argument("--language", default="auto", help="Language code or 'auto'")
     parser.add_argument("--model", default="small", help="Whisper model size")
+    parser.add_argument("--task", default="transcribe", choices=["transcribe", "translate"], help="Whisper task")
     parser.add_argument("--device", default="cpu", help="cpu, cuda, or auto")
     parser.add_argument("--compute-type", default="int8", help="Compute type")
     parser.add_argument("--job-id", default=None, help="Optional job ID for tracking")
@@ -59,6 +60,7 @@ def main() -> None:
         transcript = transcribe(
             audio_path=audio_path,
             language=args.language,
+            task=args.task,
             model_size=args.model,
             device=args.device,
             compute_type=args.compute_type,

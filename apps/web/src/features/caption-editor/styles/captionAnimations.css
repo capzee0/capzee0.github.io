@@ -1,0 +1,298 @@
+/* ─── Capzee CapCut-Style Caption Animation Engine ─────────────────────────── */
+
+/* 1. Kinetic Pop (Elastic overshoot spring) */
+@keyframes capzee-kinetic-pop {
+  0% {
+    transform: scale(0.85);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.26);
+    opacity: 1;
+  }
+  80% {
+    transform: scale(0.96);
+  }
+  100% {
+    transform: scale(1.0);
+  }
+}
+
+.anim-kinetic-pop {
+  animation: capzee-kinetic-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  will-change: transform, opacity;
+}
+
+/* 2. Kinetic Slam (Impact drop from oversized zoom) */
+@keyframes capzee-kinetic-slam {
+  0% {
+    transform: scale(1.7);
+    opacity: 0;
+    filter: blur(4px);
+  }
+  60% {
+    transform: scale(0.92);
+    opacity: 1;
+    filter: blur(0);
+  }
+  100% {
+    transform: scale(1.0);
+  }
+}
+
+.anim-kinetic-slam {
+  animation: capzee-kinetic-slam 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, filter;
+}
+
+/* 3. Word Bounce (Squash and stretch bounce) */
+@keyframes capzee-word-bounce {
+  0% {
+    transform: translateY(0) scale(1.0, 1.0);
+  }
+  30% {
+    transform: translateY(-8px) scale(0.92, 1.14);
+  }
+  60% {
+    transform: translateY(2px) scale(1.08, 0.94);
+  }
+  100% {
+    transform: translateY(0) scale(1.0, 1.0);
+  }
+}
+
+.anim-word-bounce {
+  animation: capzee-word-bounce 0.32s cubic-bezier(0.28, 0.84, 0.42, 1) forwards;
+}
+
+/* 4. Glitch Cyber (RGB split chromatic aberration) */
+@keyframes capzee-glitch {
+  0% {
+    transform: translate(0);
+    text-shadow: 2px 0 #FF0055, -2px 0 #00F0FF;
+  }
+  20% {
+    transform: translate(-2px, 1px);
+    text-shadow: -2px 0 #FF0055, 2px 0 #00F0FF;
+  }
+  40% {
+    transform: translate(2px, -1px);
+    text-shadow: 3px 0 #FF0055, -1px 0 #00F0FF;
+  }
+  60% {
+    transform: translate(-1px, 2px);
+    text-shadow: -1px 0 #FF0055, 3px 0 #00F0FF;
+  }
+  80% {
+    transform: translate(1px, -1px);
+    text-shadow: 2px 0 #FF0055, -2px 0 #00F0FF;
+  }
+  100% {
+    transform: translate(0);
+    text-shadow: 0 0 10px rgba(0, 240, 255, 0.6);
+  }
+}
+
+.anim-glitch {
+  animation: capzee-glitch 0.25s steps(2, jump-none) forwards;
+}
+
+/* 5. Shake Emphatic */
+@keyframes capzee-shake {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  20% { transform: translate(-2px, 1px) rotate(-1deg); }
+  40% { transform: translate(2px, -1px) rotate(1.5deg); }
+  60% { transform: translate(-1px, 2px) rotate(-1deg); }
+  80% { transform: translate(2px, 1px) rotate(0.5deg); }
+}
+
+.anim-shake {
+  animation: capzee-shake 0.3s ease-in-out forwards;
+}
+
+/* 6. Zoom Caption Pulse */
+@keyframes capzee-zoom-pulse {
+  0% { transform: scale(0.92); opacity: 0.85; }
+  50% { transform: scale(1.18); opacity: 1; }
+  100% { transform: scale(1.0); opacity: 1; }
+}
+
+.anim-zoom-pulse {
+  animation: capzee-zoom-pulse 0.35s ease-out forwards;
+}
+
+/* 7. Neon Glow Pulse */
+@keyframes capzee-neon-pulse {
+  0%, 100% {
+    text-shadow: 0 0 8px rgba(0, 240, 255, 0.9), 0 0 16px rgba(0, 240, 255, 0.6), 0 0 32px rgba(0, 240, 255, 0.4);
+  }
+  50% {
+    text-shadow: 0 0 12px rgba(0, 240, 255, 1), 0 0 24px rgba(0, 240, 255, 0.8), 0 0 48px rgba(0, 240, 255, 0.6);
+  }
+}
+
+.anim-neon-pulse {
+  animation: capzee-neon-pulse 1.2s ease-in-out infinite;
+}
+
+/* 8. Whisper Fade (Soft letter spacing expansion) */
+@keyframes capzee-whisper-fade {
+  0% {
+    opacity: 0;
+    letter-spacing: 0.15em;
+    filter: blur(6px);
+    transform: translateY(4px);
+  }
+  100% {
+    opacity: 1;
+    letter-spacing: 0.22em;
+    filter: blur(0);
+    transform: translateY(0);
+  }
+}
+
+.anim-whisper-fade {
+  animation: capzee-whisper-fade 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* 9. Rise and Settle */
+@keyframes capzee-rise-settle {
+  0% {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.anim-rise-settle {
+  animation: capzee-rise-settle 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* 10. Blur In */
+@keyframes capzee-blur-in {
+  0% {
+    opacity: 0;
+    filter: blur(10px);
+    transform: scale(0.96);
+  }
+  100% {
+    opacity: 1;
+    filter: blur(0);
+    transform: scale(1.0);
+  }
+}
+
+.anim-blur-in {
+  animation: capzee-blur-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* 11. Mask Wipe */
+@keyframes capzee-mask-wipe {
+  0% {
+    clip-path: inset(0 100% 0 0);
+  }
+  100% {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+.anim-mask-wipe {
+  animation: capzee-mask-wipe 0.45s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
+/* 12. Underline Sweep */
+@keyframes capzee-underline-sweep {
+  0% {
+    width: 0%;
+    opacity: 0;
+  }
+  100% {
+    width: 100%;
+    opacity: 1;
+  }
+}
+
+.anim-underline-sweep {
+  position: relative;
+}
+.anim-underline-sweep::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -4px;
+  height: 3px;
+  background: #16A34A;
+  border-radius: 2px;
+  animation: capzee-underline-sweep 0.4s ease-out forwards;
+}
+
+/* 13. Slide Up */
+@keyframes capzee-slide-up {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.anim-slide-up {
+  animation: capzee-slide-up 0.28s ease-out forwards;
+}
+
+/* 14. Fade In */
+@keyframes capzee-fade-in {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+.anim-fade-in {
+  animation: capzee-fade-in 0.25s ease-out forwards;
+}
+
+/* 15. Zoom Statistic */
+@keyframes capzee-zoom-statistic {
+  0% {
+    transform: scale(1.45);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(0.95);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.0);
+  }
+}
+
+.anim-zoom-statistic {
+  animation: capzee-zoom-statistic 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+/* Reduced Motion Override for Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .anim-kinetic-pop,
+  .anim-kinetic-slam,
+  .anim-word-bounce,
+  .anim-glitch,
+  .anim-shake,
+  .anim-zoom-pulse,
+  .anim-neon-pulse,
+  .anim-whisper-fade,
+  .anim-rise-settle,
+  .anim-blur-in,
+  .anim-mask-wipe,
+  .anim-slide-up,
+  .anim-zoom-statistic {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transform: none !important;
+    filter: none !important;
+  }
+}

@@ -31,6 +31,7 @@ def _load_faster_whisper():
 def transcribe(
     audio_path: str,
     language: str = "auto",
+    task: str = "transcribe",
     model_size: Optional[str] = None,
     device: Optional[str] = None,
     compute_type: Optional[str] = None,
@@ -101,6 +102,7 @@ def transcribe(
         segments_iter, info = model.transcribe(
             str(audio),
             language=whisper_language,
+            task=task,
             word_timestamps=True,
             beam_size=5,
             vad_filter=True,           # filter non-speech
@@ -136,14 +138,32 @@ def transcribe(
         if seg_end <= seg_start:
             seg_end = seg_start + 0.1
 
-        seg = Segment(
-            id=f"seg-{uuid.uuid4().hex[:8]}",
-            start=seg_start,
-            end=seg_end,
-            text=raw_seg.text.strip(),
-            words=words,
-        )
-        segments.append(seg)
+        # Prevent giant paragraph captions: chunk speech into punchy 2-3 word segments
+        if words and len(words) > 3:
+            chunk_size = 3
+            for i in range(0, len(words), chunk_size):
+                chunk = words[i:i + chunk_size]
+                if not chunk:
+                    continue
+                c_start = chunk[0].start
+                c_end = chunk[-1].end
+                c_text = " ".join(w.text for w in chunk).strip()
+                segments.append(Segment(
+                    id=f"seg-{uuid.uuid4().hex[:8]}",
+                    start=round(c_start, 2),
+                    end=round(c_end, 2),
+                    text=c_text,
+                    words=chunk,
+                ))
+        else:
+            seg = Segment(
+                id=f"seg-{uuid.uuid4().hex[:8]}",
+                start=round(seg_start, 2),
+                end=round(seg_end, 2),
+                text=raw_seg.text.strip(),
+                words=words,
+            )
+            segments.append(seg)
 
         if on_progress and total_duration > 0:
             pct = min(90, int(20 + (seg_end / total_duration) * 70))

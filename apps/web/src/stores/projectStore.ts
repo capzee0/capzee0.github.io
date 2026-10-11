@@ -10,6 +10,9 @@ export interface Project {
   durationSeconds: number | null;
   originalAssetPath: string | null;
   localVideoUrl: string | null; // blob URL for local preview
+  thumbnailUrl?: string | null; // video thumbnail preview data URL
+  qualityLabel?: string | null; // quality badge (e.g. 720p HD, 1080p)
+  aspectRatio?: string | null; // aspect ratio e.g. '9:16', '16:9', '1:1'
   createdAt: string;
   updatedAt: string;
 }
@@ -41,6 +44,7 @@ interface ProjectStore {
   setCurrentJob: (job: JobState | null) => void;
   updateJob: (updates: Partial<JobState>) => void;
   setCaptionStyle: (style: Partial<CaptionStyle>) => void;
+  replaceCaptionStyle: (style: CaptionStyle) => void;
   setLocalVideoFile: (file: File | null) => void;
 }
 
@@ -86,6 +90,7 @@ export const useProjectStore = create<ProjectStore>()(
         })),
       setCaptionStyle: (style) =>
         set((state) => ({ captionStyle: { ...state.captionStyle, ...style } })),
+      replaceCaptionStyle: (style) => set({ captionStyle: style }),
       setLocalVideoFile: (file) => set({ localVideoFile: file }),
     }),
     {

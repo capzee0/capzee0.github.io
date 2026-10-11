@@ -9,7 +9,7 @@ import {
   updateProject,
 } from '../../db/local-store.js';
 import { createError } from '../../middleware/error.js';
-import { ValidatedTranscriptSchema } from '@capzee/contracts';
+import { ValidatedTranscriptSchema, transliterateTranscript } from '@capzee/contracts';
 import { spawn } from 'child_process';
 import fs from 'fs';
 import path from 'path';
@@ -17,7 +17,12 @@ import { config } from '../../config/index.js';
 
 export const transcriptsRouter = Router({ mergeParams: true });
 
-async function transcribeWithGroq(filePath: string, apiKey: string, language?: string) {
+async function transcribeWithGroq(
+  filePath: string,
+  apiKey: string,
+  language?: string,
+  task: 'transcribe' | 'translate' = 'transcribe'
+) {
   const fileBuffer = fs.readFileSync(filePath);
   const ext = path.extname(filePath).slice(1) || 'mp4';
   const blob = new Blob([fileBuffer], { type: `video/${ext}` });
@@ -27,11 +32,15 @@ async function transcribeWithGroq(filePath: string, apiKey: string, language?: s
   formData.append('response_format', 'verbose_json');
   formData.append('timestamp_granularities[]', 'word');
   formData.append('timestamp_granularities[]', 'segment');
-  if (language && language !== 'auto') {
+  if (task === 'transcribe' && language && language !== 'auto') {
     formData.append('language', language);
   }
 
-  const res = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+  const endpoint = task === 'translate'
+    ? 'https://api.groq.com/openai/v1/audio/translations'
+    : 'https://api.groq.com/openai/v1/audio/transcriptions';
+
+  const res = await fetch(endpoint, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${apiKey}`,
@@ -51,25 +60,46 @@ async function transcribeWithGroq(filePath: string, apiKey: string, language?: s
     words?: Array<{ word: string; start: number; end: number }>;
   };
 
-  let segIdx = 1;
-  const segments = (data.segments || []).map((seg) => {
-    const rawWords = (seg.words || []).map((w, wIdx) => ({
-      id: `w-${segIdx}-${wIdx + 1}`,
-      text: w.word.trim(),
-      start: Number(w.start.toFixed(3)),
-      end: Number(Math.max(w.start + 0.05, w.end).toFixed(3)),
-      confidence: 1.0,
-    }));
+  const allWords = data.words || [];
+  let wordCursor = 0;
+  const rawSegments = data.segments || [];
 
-    const resultSeg = {
+  const segments = rawSegments.map((seg, sIdx) => {
+    const segIdx = sIdx + 1;
+    let segWords: Array<{ id: string; text: string; start: number; end: number; confidence: number | null }> = [];
+
+    if (seg.words && seg.words.length > 0) {
+      segWords = seg.words.map((w, wIdx) => ({
+        id: `w-${segIdx}-${wIdx + 1}`,
+        text: w.word.trim(),
+        start: Number(w.start.toFixed(3)),
+        end: Number(Math.max(w.start + 0.05, w.end).toFixed(3)),
+        confidence: 1.0,
+      }));
+    } else if (allWords.length > 0) {
+      while (wordCursor < allWords.length) {
+        const w = allWords[wordCursor];
+        if (sIdx < rawSegments.length - 1 && w.start >= seg.end) {
+          break;
+        }
+        segWords.push({
+          id: `w-${segIdx}-${segWords.length + 1}`,
+          text: w.word.trim(),
+          start: Number(w.start.toFixed(3)),
+          end: Number(Math.max(w.start + 0.05, w.end).toFixed(3)),
+          confidence: 1.0,
+        });
+        wordCursor++;
+      }
+    }
+
+    return {
       id: `seg-${segIdx}`,
       start: Number(seg.start.toFixed(3)),
       end: Number(Math.max(seg.start + 0.1, seg.end).toFixed(3)),
       text: seg.text.trim(),
-      words: rawWords.length > 0 ? rawWords : undefined,
+      words: segWords.length > 0 ? segWords : undefined,
     };
-    segIdx++;
-    return resultSeg;
   });
 
   return {
@@ -79,7 +109,12 @@ async function transcribeWithGroq(filePath: string, apiKey: string, language?: s
   };
 }
 
-async function transcribeWithOpenAI(filePath: string, apiKey: string, language?: string) {
+async function transcribeWithOpenAI(
+  filePath: string,
+  apiKey: string,
+  language?: string,
+  task: 'transcribe' | 'translate' = 'transcribe'
+) {
   const fileBuffer = fs.readFileSync(filePath);
   const ext = path.extname(filePath).slice(1) || 'mp4';
   const blob = new Blob([fileBuffer], { type: `video/${ext}` });
@@ -89,11 +124,15 @@ async function transcribeWithOpenAI(filePath: string, apiKey: string, language?:
   formData.append('response_format', 'verbose_json');
   formData.append('timestamp_granularities[]', 'word');
   formData.append('timestamp_granularities[]', 'segment');
-  if (language && language !== 'auto') {
+  if (task === 'transcribe' && language && language !== 'auto') {
     formData.append('language', language);
   }
 
-  const res = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+  const endpoint = task === 'translate'
+    ? 'https://api.openai.com/v1/audio/translations'
+    : 'https://api.openai.com/v1/audio/transcriptions';
+
+  const res = await fetch(endpoint, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${apiKey}`,
@@ -113,25 +152,46 @@ async function transcribeWithOpenAI(filePath: string, apiKey: string, language?:
     words?: Array<{ word: string; start: number; end: number }>;
   };
 
-  let segIdx = 1;
-  const segments = (data.segments || []).map((seg) => {
-    const rawWords = (seg.words || []).map((w, wIdx) => ({
-      id: `w-${segIdx}-${wIdx + 1}`,
-      text: w.word.trim(),
-      start: Number(w.start.toFixed(3)),
-      end: Number(Math.max(w.start + 0.05, w.end).toFixed(3)),
-      confidence: 1.0,
-    }));
+  const allWords = data.words || [];
+  let wordCursor = 0;
+  const rawSegments = data.segments || [];
 
-    const resultSeg = {
+  const segments = rawSegments.map((seg, sIdx) => {
+    const segIdx = sIdx + 1;
+    let segWords: Array<{ id: string; text: string; start: number; end: number; confidence: number | null }> = [];
+
+    if (seg.words && seg.words.length > 0) {
+      segWords = seg.words.map((w, wIdx) => ({
+        id: `w-${segIdx}-${wIdx + 1}`,
+        text: w.word.trim(),
+        start: Number(w.start.toFixed(3)),
+        end: Number(Math.max(w.start + 0.05, w.end).toFixed(3)),
+        confidence: 1.0,
+      }));
+    } else if (allWords.length > 0) {
+      while (wordCursor < allWords.length) {
+        const w = allWords[wordCursor];
+        if (sIdx < rawSegments.length - 1 && w.start >= seg.end) {
+          break;
+        }
+        segWords.push({
+          id: `w-${segIdx}-${segWords.length + 1}`,
+          text: w.word.trim(),
+          start: Number(w.start.toFixed(3)),
+          end: Number(Math.max(w.start + 0.05, w.end).toFixed(3)),
+          confidence: 1.0,
+        });
+        wordCursor++;
+      }
+    }
+
+    return {
       id: `seg-${segIdx}`,
       start: Number(seg.start.toFixed(3)),
       end: Number(Math.max(seg.start + 0.1, seg.end).toFixed(3)),
       text: seg.text.trim(),
-      words: rawWords.length > 0 ? rawWords : undefined,
+      words: segWords.length > 0 ? segWords : undefined,
     };
-    segIdx++;
-    return resultSeg;
   });
 
   return {
@@ -145,6 +205,7 @@ const transcribeBody = z.object({
   language: z.string().default('auto'),
   model: z.enum(['tiny', 'base', 'small', 'medium', 'large-v2', 'large-v3']).optional(),
   device: z.enum(['cpu', 'cuda', 'auto']).optional(),
+  captionOutput: z.enum(['native', 'roman', 'translate']).default('native'),
 });
 
 const patchTranscriptBody = z.object({
@@ -169,21 +230,26 @@ transcriptsRouter.post('/transcribe', async (req: Request, res: Response, next: 
 
     const currentProjectId = project.id;
     const currentAssetPath = project.originalAssetPath;
+    const task = body.captionOutput === 'translate' ? 'translate' : 'transcribe';
 
     // Check Cloud STT: 1) Groq (Instant 1-2s), 2) OpenAI Whisper, 3) Local Worker
     const groqKey = process.env.GROQ_API_KEY || (config as { GROQ_API_KEY?: string }).GROQ_API_KEY;
-    const openAiKey = process.env.OPENAI_API_KEY;
+    const openAiKey = process.env.OPENAI_API_KEY || (config as { OPENAI_API_KEY?: string }).OPENAI_API_KEY;
 
     if ((groqKey || openAiKey) && fs.existsSync(currentAssetPath)) {
       updateJob(job.id, { status: 'processing', stage: 'cloud_transcription', progress: 30 });
 
       const runner = groqKey
-        ? transcribeWithGroq(currentAssetPath, groqKey, body.language)
-        : transcribeWithOpenAI(currentAssetPath, openAiKey!, body.language);
+        ? transcribeWithGroq(currentAssetPath, groqKey, body.language, task)
+        : transcribeWithOpenAI(currentAssetPath, openAiKey!, body.language, task);
 
       runner
-        .then((transcript) => {
-          setTranscript(currentProjectId, transcript);
+        .then((rawTranscript) => {
+          const finalTranscript = body.captionOutput === 'roman'
+            ? transliterateTranscript(rawTranscript, body.language)
+            : rawTranscript;
+
+          setTranscript(currentProjectId, finalTranscript);
           updateJob(job.id, {
             status: 'completed',
             progress: 100,
@@ -197,8 +263,12 @@ transcriptsRouter.post('/transcribe', async (req: Request, res: Response, next: 
           if (groqKey && openAiKey) {
             try {
               console.info('[transcribe] Retrying with OpenAI Whisper...');
-              const transcript = await transcribeWithOpenAI(currentAssetPath, openAiKey, body.language);
-              setTranscript(currentProjectId, transcript);
+              const rawTranscript = await transcribeWithOpenAI(currentAssetPath, openAiKey, body.language, task);
+              const finalTranscript = body.captionOutput === 'roman'
+                ? transliterateTranscript(rawTranscript, body.language)
+                : rawTranscript;
+
+              setTranscript(currentProjectId, finalTranscript);
               updateJob(job.id, {
                 status: 'completed',
                 progress: 100,
@@ -235,6 +305,7 @@ transcriptsRouter.post('/transcribe', async (req: Request, res: Response, next: 
         workerScript,
         '--video', currentAssetPath,
         '--language', body.language,
+        '--task', task,
         '--model', model,
         '--device', device,
         '--job-id', job.id,
@@ -271,7 +342,11 @@ transcriptsRouter.post('/transcribe', async (req: Request, res: Response, next: 
             if (result.transcript) {
               const parsed = ValidatedTranscriptSchema.safeParse(result.transcript);
               if (parsed.success) {
-                setTranscript(currentProjectId, parsed.data);
+                const finalTranscript = body.captionOutput === 'roman'
+                  ? transliterateTranscript(parsed.data, body.language)
+                  : parsed.data;
+
+                setTranscript(currentProjectId, finalTranscript);
                 updateJob(job.id, { status: 'completed', progress: 100, stage: 'done', completedAt: new Date().toISOString() });
                 updateProject(currentProjectId, { status: 'transcribed' });
               } else {

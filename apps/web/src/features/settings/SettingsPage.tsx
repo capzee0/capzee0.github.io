@@ -1,173 +1,287 @@
 import { useState } from 'react';
 import {
-  Settings, Monitor, Cpu, HardDrive, Globe, Info, AlertTriangle
+  Settings, Cpu, Video, Scissors, Check,
+  RotateCcw, Sparkles
 } from 'lucide-react';
-import { WHISPER_MODELS } from '@capzee/contracts';
+import { WHISPER_MODELS, SUPPORTED_TRANSCRIPTION_LANGUAGES } from '@capzee/contracts';
 
 export function SettingsPage() {
+  // AI Speech Settings
   const [whisperModel, setWhisperModel] = useState(
     () => localStorage.getItem('capzee.whisper_model') ?? 'small'
   );
+  const [defaultLanguage, setDefaultLanguage] = useState(
+    () => localStorage.getItem('capzee.default_language') ?? 'auto'
+  );
+
+  // Video Export Defaults
+  const [defaultAspectRatio, setDefaultAspectRatio] = useState(
+    () => localStorage.getItem('capzee.default_aspect_ratio') ?? '9:16'
+  );
+  const [defaultQuality, setDefaultQuality] = useState(
+    () => localStorage.getItem('capzee.default_quality') ?? '1080p'
+  );
+
+  // Silence Trimmer Defaults
+  const [silenceThreshold, setSilenceThreshold] = useState(
+    () => localStorage.getItem('capzee.silence_threshold') ?? '-35'
+  );
+  const [minPauseDuration, setMinPauseDuration] = useState(
+    () => localStorage.getItem('capzee.min_pause_duration') ?? '0.5'
+  );
+
+  // Advanced / Engine
   const [ffmpegPath, setFfmpegPath] = useState(
     () => localStorage.getItem('capzee.ffmpeg_path') ?? ''
   );
+  const [savedToast, setSavedToast] = useState(false);
 
-  function save() {
+  function handleSave() {
     localStorage.setItem('capzee.whisper_model', whisperModel);
+    localStorage.setItem('capzee.default_language', defaultLanguage);
+    localStorage.setItem('capzee.default_aspect_ratio', defaultAspectRatio);
+    localStorage.setItem('capzee.default_quality', defaultQuality);
+    localStorage.setItem('capzee.silence_threshold', silenceThreshold);
+    localStorage.setItem('capzee.min_pause_duration', minPauseDuration);
     localStorage.setItem('capzee.ffmpeg_path', ffmpegPath);
-    alert('Settings saved. Restart the dev server to apply backend changes.');
+
+    setSavedToast(true);
+    setTimeout(() => setSavedToast(false), 3000);
+  }
+
+  function handleReset() {
+    setWhisperModel('small');
+    setDefaultLanguage('auto');
+    setDefaultAspectRatio('9:16');
+    setDefaultQuality('1080p');
+    setSilenceThreshold('-35');
+    setMinPauseDuration('0.5');
+    setFfmpegPath('');
   }
 
   const selectedModel = WHISPER_MODELS.find((m) => m.id === whisperModel);
 
   return (
-    <div className="h-full overflow-auto">
-      <div className="max-w-2xl mx-auto px-8 py-8 space-y-8">
-        {/* Header */}
+    <div className="h-full flex flex-col bg-[#D96846] text-[#2F3020] overflow-hidden font-sans">
+      {/* Content Header (Compact) */}
+      <div className="px-6 py-3 flex-shrink-0 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2.5">
-            <Settings className="w-6 h-6 text-accent-blue" />
+          <h1 className="text-xl font-black flex items-center gap-2 text-[#2F3020] tracking-tight">
+            <Settings className="w-5 h-5 text-[#16A34A]" />
             Settings
           </h1>
-          <p className="text-text-secondary text-sm mt-1">
-            Configure local processing preferences
+          <p className="text-[#2F3020]/80 text-[11px] font-semibold">
+            Studio preferences and AI model configuration · Capzee Studio
           </p>
         </div>
 
-        {/* Transcription settings */}
-        <section className="panel p-6 space-y-4">
-          <h2 className="font-semibold text-text-primary flex items-center gap-2">
-            <Cpu className="w-4 h-4 text-accent-blue" />
-            Transcription (Whisper)
-          </h2>
+        {/* Quick save button in header */}
+        <div className="flex items-center gap-2">
+          {savedToast && (
+            <span className="text-xs font-bold text-[#16A34A] bg-[#FAF7F5] px-2.5 py-1 rounded-md border border-[#16A34A]/30 shadow-xs animate-in fade-in">
+              ✓ Saved!
+            </span>
+          )}
+          <button
+            onClick={handleSave}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#16A34A] hover:bg-[#15803D] active:scale-95 text-white text-xs font-bold rounded-lg shadow-sm transition-all cursor-pointer"
+          >
+            <Check className="w-3.5 h-3.5 stroke-[2.5]" />
+            <span>Save</span>
+          </button>
+        </div>
+      </div>
 
-          <div>
-            <label className="label" htmlFor="settings-model">Whisper Model</label>
-            <select
-              id="settings-model"
-              className="input"
-              value={whisperModel}
-              onChange={(e) => setWhisperModel(e.target.value)}
-            >
-              {WHISPER_MODELS.map((m) => (
-                <option key={m.id} value={m.id}>{m.label}</option>
-              ))}
-            </select>
+      {/* Main Settings 2-Column Grid (Zero Scroll) */}
+      <div className="flex-1 overflow-hidden px-6 pb-4 flex flex-col justify-between min-h-0 max-w-4xl w-full mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 items-start">
+          {/* Column 1: AI Speech & Advanced */}
+          <div className="space-y-3">
+            {/* 1. AI Speech & Transcription Section */}
+            <section className="bg-[#CDCBD6] border border-[#2F3020]/15 rounded-xl p-3.5 space-y-2.5 shadow-sm text-[#2F3020]">
+              <h2 className="font-bold text-[#2F3020] text-xs flex items-center gap-1.5">
+                <Cpu className="w-3.5 h-3.5 text-[#16A34A]" />
+                AI Speech & Transcription
+              </h2>
 
-            {selectedModel && (
-              <div className="mt-2 grid grid-cols-3 gap-3">
-                {[
-                  { label: 'Disk', value: `~${selectedModel.diskMb} MB` },
-                  { label: 'RAM', value: `~${selectedModel.ramMb} MB` },
-                  { label: 'Speed', value: selectedModel.speed },
-                ].map(({ label, value }) => (
-                  <div key={label} className="bg-surface-DEFAULT rounded p-2 text-center">
-                    <p className="text-xs text-text-muted">{label}</p>
-                    <p className="text-sm font-medium text-text-primary">{value}</p>
-                  </div>
-                ))}
+              <div className="grid grid-cols-2 gap-2.5">
+                {/* Default Language */}
+                <div>
+                  <label className="block text-[10px] font-bold text-[#2F3020] mb-1" htmlFor="default-language">
+                    Default Language
+                  </label>
+                  <select
+                    id="default-language"
+                    className="w-full bg-[#FAF7F5] border border-[#2F3020]/20 rounded-md px-2 py-1.5 text-xs font-semibold text-[#2F3020] focus:outline-none focus:ring-1 focus:ring-[#16A34A]"
+                    value={defaultLanguage}
+                    onChange={(e) => setDefaultLanguage(e.target.value)}
+                  >
+                    <option value="auto">Auto-detect</option>
+                    {SUPPORTED_TRANSCRIPTION_LANGUAGES.map((lang) => (
+                      <option key={lang.code} value={lang.code}>
+                        {lang.label} ({lang.code})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* AI Model */}
+                <div>
+                  <label className="block text-[10px] font-bold text-[#2F3020] mb-1" htmlFor="whisper-model">
+                    Whisper AI Model
+                  </label>
+                  <select
+                    id="whisper-model"
+                    className="w-full bg-[#FAF7F5] border border-[#2F3020]/20 rounded-md px-2 py-1.5 text-xs font-semibold text-[#2F3020] focus:outline-none focus:ring-1 focus:ring-[#16A34A]"
+                    value={whisperModel}
+                    onChange={(e) => setWhisperModel(e.target.value)}
+                  >
+                    {WHISPER_MODELS.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.label} ({m.speed})
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
-            )}
+
+              {/* Model info badges */}
+              {selectedModel && (
+                <div className="grid grid-cols-3 gap-1.5 pt-0.5">
+                  {[
+                    { label: 'Download', value: `~${selectedModel.diskMb} MB` },
+                    { label: 'Memory', value: `~${selectedModel.ramMb} MB` },
+                    { label: 'Speed', value: selectedModel.speed },
+                  ].map(({ label, value }) => (
+                    <div key={label} className="bg-[#FAF7F5] border border-[#2F3020]/15 rounded-md p-1.5 text-center shadow-xs">
+                      <p className="text-[9px] text-[#2F3020]/60 font-medium leading-none">{label}</p>
+                      <p className="text-[11px] font-bold text-[#2F3020] mt-0.5">{value}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            {/* Advanced Engine Info */}
+            <section className="bg-[#CDCBD6] border border-[#2F3020]/15 rounded-xl p-3 shadow-sm text-[#2F3020]">
+              <div className="flex items-center justify-between text-xs font-bold">
+                <span className="flex items-center gap-1.5 text-[11px]">
+                  <Sparkles className="w-3.5 h-3.5 text-[#16A34A]" />
+                  Engine & Version
+                </span>
+                <span className="text-[10px] font-mono text-[#16A34A] bg-[#FAF7F5] px-2 py-0.5 rounded border border-[#2F3020]/15">
+                  Capzee AI v0.1.0
+                </span>
+              </div>
+            </section>
           </div>
 
-          <div className="flex items-start gap-2 p-3 rounded-lg bg-status-info/10 border border-status-info/20 text-xs text-text-secondary">
-            <Info className="w-3.5 h-3.5 text-status-info flex-shrink-0 mt-0.5" />
-            <span>
-              Models are downloaded on first use from Hugging Face.
-              The "small" model (244 MB) offers a good balance of accuracy and speed.
-            </span>
+          {/* Column 2: Video Export Defaults & Silence Trimmer */}
+          <div className="space-y-3">
+            {/* 2. Video & Canvas Export Defaults */}
+            <section className="bg-[#CDCBD6] border border-[#2F3020]/15 rounded-xl p-3.5 space-y-2.5 shadow-sm text-[#2F3020]">
+              <h2 className="font-bold text-[#2F3020] text-xs flex items-center gap-1.5">
+                <Video className="w-3.5 h-3.5 text-[#16A34A]" />
+                Video & Canvas Defaults
+              </h2>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label className="block text-[10px] font-bold text-[#2F3020] mb-1" htmlFor="default-aspect">
+                    Default Aspect Ratio
+                  </label>
+                  <select
+                    id="default-aspect"
+                    className="w-full bg-[#FAF7F5] border border-[#2F3020]/20 rounded-md px-2 py-1.5 text-xs font-semibold text-[#2F3020] focus:outline-none focus:ring-1 focus:ring-[#16A34A]"
+                    value={defaultAspectRatio}
+                    onChange={(e) => setDefaultAspectRatio(e.target.value)}
+                  >
+                    <option value="9:16">9:16 Vertical (Reels/TikTok)</option>
+                    <option value="16:9">16:9 Landscape (YouTube)</option>
+                    <option value="1:1">1:1 Square (Instagram)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-[#2F3020] mb-1" htmlFor="default-quality">
+                    Export Resolution
+                  </label>
+                  <select
+                    id="default-quality"
+                    className="w-full bg-[#FAF7F5] border border-[#2F3020]/20 rounded-md px-2 py-1.5 text-xs font-semibold text-[#2F3020] focus:outline-none focus:ring-1 focus:ring-[#16A34A]"
+                    value={defaultQuality}
+                    onChange={(e) => setDefaultQuality(e.target.value)}
+                  >
+                    <option value="1080p">1080p Full HD</option>
+                    <option value="4K">4K Ultra HD</option>
+                    <option value="720p">720p HD</option>
+                  </select>
+                </div>
+              </div>
+            </section>
+
+            {/* 3. Smart Silence Trimmer Defaults */}
+            <section className="bg-[#CDCBD6] border border-[#2F3020]/15 rounded-xl p-3.5 space-y-2.5 shadow-sm text-[#2F3020]">
+              <h2 className="font-bold text-[#2F3020] text-xs flex items-center gap-1.5">
+                <Scissors className="w-3.5 h-3.5 text-[#16A34A]" />
+                Smart Silence Trimmer Defaults
+              </h2>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label className="block text-[10px] font-bold text-[#2F3020] mb-1" htmlFor="silence-thresh">
+                    Sensitivity
+                  </label>
+                  <select
+                    id="silence-thresh"
+                    className="w-full bg-[#FAF7F5] border border-[#2F3020]/20 rounded-md px-2 py-1.5 text-xs font-semibold text-[#2F3020] focus:outline-none focus:ring-1 focus:ring-[#16A34A]"
+                    value={silenceThreshold}
+                    onChange={(e) => setSilenceThreshold(e.target.value)}
+                  >
+                    <option value="-30">Subtle (-30 dB)</option>
+                    <option value="-35">Balanced (-35 dB)</option>
+                    <option value="-40">Aggressive (-40 dB)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-[#2F3020] mb-1" htmlFor="pause-duration">
+                    Min Pause Cut
+                  </label>
+                  <select
+                    id="pause-duration"
+                    className="w-full bg-[#FAF7F5] border border-[#2F3020]/20 rounded-md px-2 py-1.5 text-xs font-semibold text-[#2F3020] focus:outline-none focus:ring-1 focus:ring-[#16A34A]"
+                    value={minPauseDuration}
+                    onChange={(e) => setMinPauseDuration(e.target.value)}
+                  >
+                    <option value="0.3">0.3s (Fast)</option>
+                    <option value="0.5">0.5s (Standard)</option>
+                    <option value="0.8">0.8s (Natural)</option>
+                  </select>
+                </div>
+              </div>
+            </section>
           </div>
-        </section>
+        </div>
 
-        {/* FFmpeg settings */}
-        <section className="panel p-6 space-y-4">
-          <h2 className="font-semibold text-text-primary flex items-center gap-2">
-            <Monitor className="w-4 h-4 text-accent-blue" />
-            FFmpeg
-          </h2>
+        {/* Footer Actions */}
+        <div className="flex items-center justify-between pt-2">
+          <button
+            onClick={handleReset}
+            className="flex items-center gap-1 text-[11px] font-semibold text-[#2F3020]/75 hover:text-[#2F3020] transition-colors cursor-pointer"
+          >
+            <RotateCcw className="w-3 h-3" />
+            <span>Reset Defaults</span>
+          </button>
 
-          <div>
-            <label className="label" htmlFor="ffmpeg-path">
-              FFmpeg Path (leave empty to use system PATH)
-            </label>
-            <input
-              id="ffmpeg-path"
-              type="text"
-              className="input font-mono text-sm"
-              placeholder="e.g. C:\ffmpeg\bin\ffmpeg.exe"
-              value={ffmpegPath}
-              onChange={(e) => setFfmpegPath(e.target.value)}
-            />
-          </div>
-
-          <div className="flex items-start gap-2 p-3 rounded-lg bg-status-warning/10 border border-status-warning/20 text-xs text-text-secondary">
-            <AlertTriangle className="w-3.5 h-3.5 text-status-warning flex-shrink-0 mt-0.5" />
-            <span>
-              FFmpeg is required for audio extraction and video rendering.
-              Download from{' '}
-              <a
-                href="https://ffmpeg.org/download.html"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-accent-blue hover:underline"
-              >
-                ffmpeg.org
-              </a>{' '}
-              and add it to your PATH.
-            </span>
-          </div>
-        </section>
-
-        {/* System info */}
-        <section className="panel p-6 space-y-3">
-          <h2 className="font-semibold text-text-primary flex items-center gap-2">
-            <HardDrive className="w-4 h-4 text-accent-blue" />
-            System
-          </h2>
-          <div className="grid grid-cols-2 gap-2 text-sm">
-            <div className="flex justify-between text-text-secondary">
-              <span>Processing Mode:</span>
-              <span className="text-text-primary">Local</span>
-            </div>
-            <div className="flex justify-between text-text-secondary">
-              <span>Cloud Sync:</span>
-              <span className="text-text-primary">Disabled</span>
-            </div>
-            <div className="flex justify-between text-text-secondary">
-              <span>Version:</span>
-              <span className="text-text-primary">0.1.0</span>
-            </div>
-          </div>
-        </section>
-
-        {/* Python note */}
-        <section className="panel p-6 space-y-3">
-          <h2 className="font-semibold text-text-primary flex items-center gap-2">
-            <Globe className="w-4 h-4 text-accent-blue" />
-            Python Worker
-          </h2>
-          <div className="text-sm text-text-secondary space-y-2">
-            <p>
-              Transcription requires Python 3.9+ and faster-whisper.
-            </p>
-            <div className="bg-bg-secondary rounded p-3 font-mono text-xs text-text-primary space-y-1">
-              <p className="text-text-muted"># Set up the Python worker</p>
-              <p>cd services/ai-worker</p>
-              <p>python -m venv .venv</p>
-              <p>.venv\Scripts\activate  <span className="text-text-muted"># Windows</span></p>
-              <p>pip install pydantic faster-whisper</p>
-            </div>
-            <p className="text-xs text-text-muted">
-              Note: faster-whisper officially supports Python 3.8–3.11. Python 3.14 may require
-              additional workarounds. See docs/LOCAL_SETUP.md for details.
-            </p>
-          </div>
-        </section>
-
-        {/* Save */}
-        <button onClick={save} className="btn-primary px-8 py-2.5">
-          Save Settings
-        </button>
+          <button
+            onClick={handleSave}
+            className="flex items-center gap-1.5 px-5 py-2 bg-[#16A34A] hover:bg-[#15803D] active:scale-95 text-white text-xs font-bold rounded-lg shadow-sm transition-all cursor-pointer"
+          >
+            <Check className="w-3.5 h-3.5 stroke-[2.5]" />
+            <span>Save Settings</span>
+          </button>
+        </div>
       </div>
     </div>
   );

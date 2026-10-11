@@ -94,7 +94,12 @@ export function getExportUrl(projectId: string, format: 'mp4' | 'srt' | 'vtt' | 
 // ─── Transcription ────────────────────────────────────────────────────────────
 export async function startTranscription(
   projectId: string,
-  opts: { language?: string; model?: string; device?: string } = {},
+  opts: {
+    language?: string;
+    model?: string;
+    device?: string;
+    captionOutput?: 'native' | 'roman' | 'translate';
+  } = {},
 ) {
   return request<{ jobId: string }>(`/projects/${projectId}/transcribe`, {
     method: 'POST',
@@ -138,6 +143,31 @@ export async function generateSocialCaptions(
   return request<import('@capzee/contracts').SocialCaptionOutput[]>(`/projects/${projectId}/social-captions`, {
     method: 'POST',
     body: JSON.stringify(params),
+  });
+}
+
+// ─── Smart Silence Remover (Capzee) ───────────────────────────────────────
+export interface RemovedClip {
+  id: string;
+  start: number;
+  end: number;
+  duration: number;
+  reason: string;
+}
+
+export async function trimSilence(
+  projectId: string,
+  opts: { sensitivity?: 'gentle' | 'balanced' | 'tight' } = {},
+) {
+  return request<{
+    sensitivity: string;
+    minPauseSec: number;
+    removedClips: RemovedClip[];
+    totalRemovedSeconds: number;
+    count: number;
+  }>(`/projects/${projectId}/trim-silence`, {
+    method: 'POST',
+    body: JSON.stringify(opts),
   });
 }
 

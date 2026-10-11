@@ -1,4 +1,43 @@
+import fs from 'fs';
+import path from 'path';
 import { z } from 'zod';
+
+function tryLoadEnv() {
+  const candidates = [
+    path.resolve(process.cwd(), '.env'),
+    path.resolve(process.cwd(), 'services/api/.env'),
+    path.resolve(__dirname, '../../../.env'),
+    path.resolve(__dirname, '../../.env'),
+    path.resolve(__dirname, '../.env'),
+  ];
+  for (const p of candidates) {
+    if (fs.existsSync(p)) {
+      try {
+        if (typeof process.loadEnvFile === 'function') {
+          process.loadEnvFile(p);
+        } else {
+          const lines = fs.readFileSync(p, 'utf-8').split('\n');
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed || trimmed.startsWith('#')) continue;
+            const eqIdx = trimmed.indexOf('=');
+            if (eqIdx !== -1) {
+              const k = trimmed.slice(0, eqIdx).trim();
+              const v = trimmed.slice(eqIdx + 1).trim();
+              if (process.env[k] === undefined) {
+                process.env[k] = v;
+              }
+            }
+          }
+        }
+      } catch {
+        // ignore
+      }
+    }
+  }
+}
+
+tryLoadEnv();
 
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
@@ -45,6 +84,9 @@ const envSchema = z.object({
 
   // Groq API (Instant Speech-to-Text & LLaMA 3.3)
   GROQ_API_KEY: z.string().default(''),
+
+  // OpenAI API (Whisper & GPT-4o)
+  OPENAI_API_KEY: z.string().default(''),
 });
 
 export type AppConfig = z.infer<typeof envSchema>;

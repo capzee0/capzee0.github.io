@@ -1,0 +1,31 @@
+project_id = "zmpimzfwqcmjqkrisxej"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 15
+
+[auth]
+enabled = true
+site_url = "http://localhost:5173"
+additional_redirect_urls = [
+  "http://localhost:5173",
+  "https://capzee0.github.io"
+]
+jwt_expiry = 3600
+enable_signup = true
+
+[auth.external.google]
+enabled = true
+redirect_uri = "https://zmpimzfwqcmjqkrisxej.supabase.co/auth/v1/callback"
+
+[auth.external.github]
+enabled = true
+redirect_uri = "https://zmpimzfwqcmjqkrisxej.supabase.co/auth/v1/callback"

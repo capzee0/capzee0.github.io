@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { CAPCUT_CAPTION_PRESETS } from './presets/captionPresets.js';
+import type { CaptionPreset, CaptionStyle } from './presets/captionPresetTypes.js';
 
 // ─── Transcript Schemas ───────────────────────────────────────────────────────
 
@@ -41,72 +43,23 @@ export type Word = z.infer<typeof WordSchema>;
 export type Segment = z.infer<typeof SegmentSchema>;
 export type Transcript = z.infer<typeof TranscriptSchema>;
 
-// ─── Caption Style Schemas ────────────────────────────────────────────────────
+// ─── Transcription Options ────────────────────────────────────────────────────
+export const CaptionOutputSchema = z.enum(['native', 'roman', 'translate']);
+export type CaptionOutput = z.infer<typeof CaptionOutputSchema>;
 
-export const AnimationModeSchema = z.enum([
-  'none',
-  'word-by-word',
-  'phrase',
-  'karaoke',
-]);
-
-export const AspectRatioSchema = z.enum(['9:16', '16:9', '1:1']);
-
-export const BackgroundStyleSchema = z.enum([
-  'none',
-  'pill',
-  'box',
-  'line',
-  'blur',
-]);
-
-export const TextAlignSchema = z.enum(['left', 'center', 'right']);
-
-export const PositionSchema = z.object({
-  vertical: z.enum(['top', 'center', 'bottom']),
-  horizontal: z.enum(['left', 'center', 'right']),
-  offsetY: z.number().min(-100).max(100).default(0),
-  offsetX: z.number().min(-100).max(100).default(0),
+export const TranscribeOptionsSchema = z.object({
+  language: z.string().default('auto'),
+  model: z.enum(['tiny', 'base', 'small', 'medium', 'large-v2', 'large-v3']).optional(),
+  device: z.enum(['cpu', 'cuda', 'auto']).optional(),
+  captionOutput: CaptionOutputSchema.default('native'),
 });
+export type TranscribeOptions = z.infer<typeof TranscribeOptionsSchema>;
 
-export const ShadowSettingsSchema = z.object({
-  enabled: z.boolean(),
-  color: z.string(),
-  blur: z.number().min(0).max(50),
-  offsetX: z.number().min(-20).max(20),
-  offsetY: z.number().min(-20).max(20),
-});
+export * from './transliteration.js';
 
-export const CaptionStyleSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  fontFamily: z.string(),
-  fontSize: z.number().min(8).max(120),
-  fontWeight: z.enum(['normal', 'bold', '100', '200', '300', '400', '500', '600', '700', '800', '900']),
-  textColor: z.string().regex(/^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/),
-  activeWordColor: z.string().regex(/^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/),
-  outlineColor: z.string().regex(/^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/),
-  outlineWidth: z.number().min(0).max(20),
-  shadow: ShadowSettingsSchema,
-  backgroundStyle: BackgroundStyleSchema,
-  backgroundColor: z.string().regex(/^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/).optional(),
-  backgroundOpacity: z.number().min(0).max(1).default(0.7),
-  textAlign: TextAlignSchema,
-  position: PositionSchema,
-  maxLineLength: z.number().min(10).max(200).default(40),
-  maxLines: z.number().min(1).max(5).default(2),
-  animationMode: AnimationModeSchema,
-  aspectRatio: AspectRatioSchema,
-  safeAreaMarginPercent: z.number().min(0).max(20).default(5),
-  lineHeightMultiplier: z.number().min(0.8).max(3.0).default(1.3),
-});
-
-export type AnimationMode = z.infer<typeof AnimationModeSchema>;
-export type AspectRatio = z.infer<typeof AspectRatioSchema>;
-export type BackgroundStyle = z.infer<typeof BackgroundStyleSchema>;
-export type Position = z.infer<typeof PositionSchema>;
-export type ShadowSettings = z.infer<typeof ShadowSettingsSchema>;
-export type CaptionStyle = z.infer<typeof CaptionStyleSchema>;
+// ─── Caption Style & Presets ──────────────────────────────────────────────────
+export * from './presets/captionPresetTypes.js';
+export * from './presets/captionPresets.js';
 
 // ─── Project Schemas ─────────────────────────────────────────────────────────
 
@@ -276,32 +229,149 @@ export type ApiError = z.infer<typeof ApiErrorSchema>;
 
 // ─── Caption Presets ──────────────────────────────────────────────────────────
 
-export const CAPTION_PRESETS: Omit<CaptionStyle, 'aspectRatio'>[] = [
+export const CAPTION_PRESETS: CaptionPreset[] = CAPCUT_CAPTION_PRESETS;
+
+export const LEGACY_PRESETS: Omit<CaptionStyle, 'aspectRatio'>[] = [
+  {
+    id: 'script-lessons',
+    name: 'Script Lessons',
+    fontFamily: 'Montserrat',
+    fontSize: 26,
+    fontWeight: '900',
+    textColor: '#EF4444',
+    activeWordColor: '#FFFFFF',
+    outlineColor: '#000000',
+    outlineWidth: 2,
+    shadow: { enabled: true, color: '#000000', blur: 6, offsetX: 1, offsetY: 2 },
+    backgroundStyle: 'none',
+    backgroundColor: undefined,
+    backgroundOpacity: 0,
+    textAlign: 'center',
+    position: { vertical: 'bottom', horizontal: 'center', offsetY: 0, offsetX: 0 },
+    maxLineLength: 32,
+    maxLines: 2,
+    animationMode: 'karaoke',
+    safeAreaMarginPercent: 12,
+    lineHeightMultiplier: 1.35,
+    scriptAccent: true,
+    scriptFont: "'Great Vibes', 'Alex Brush', 'Dancing Script', cursive",
+    uppercase: true,
+  },
+  {
+    id: 'none',
+    name: 'None',
+    fontFamily: 'Inter',
+    fontSize: 25,
+    fontWeight: '600',
+    textColor: '#FFFFFF',
+    activeWordColor: '#FFFFFF',
+    outlineColor: '#000000',
+    outlineWidth: 0,
+    shadow: { enabled: true, color: 'rgba(0,0,0,0.85)', blur: 6, offsetX: 1, offsetY: 2 },
+    backgroundStyle: 'none',
+    backgroundColor: undefined,
+    backgroundOpacity: 0,
+    textAlign: 'center',
+    position: { vertical: 'bottom', horizontal: 'center', offsetY: 0, offsetX: 0 },
+    maxLineLength: 32,
+    maxLines: 2,
+    animationMode: 'phrase',
+    safeAreaMarginPercent: 12,
+    lineHeightMultiplier: 1.35,
+  },
+  {
+    id: 'lyrical-pop',
+    name: 'Lyrical Pop',
+    fontFamily: 'Inter',
+    fontSize: 24,
+    fontWeight: '700',
+    textColor: '#FFFFFF',
+    activeWordColor: '#16A34A',
+    outlineColor: '#000000',
+    outlineWidth: 1,
+    shadow: { enabled: true, color: 'rgba(0,0,0,0.8)', blur: 6, offsetX: 1, offsetY: 2 },
+    backgroundStyle: 'none',
+    backgroundColor: undefined,
+    backgroundOpacity: 0,
+    textAlign: 'center',
+    position: { vertical: 'bottom', horizontal: 'center', offsetY: 0, offsetX: 0 },
+    maxLineLength: 26,
+    maxLines: 3,
+    animationMode: 'word-by-word',
+    safeAreaMarginPercent: 12,
+    lineHeightMultiplier: 1.45,
+  },
+  {
+    id: 'center-script',
+    name: 'Center Script',
+    fontFamily: 'Inter',
+    fontSize: 25,
+    fontWeight: '800',
+    textColor: '#FFFFFF',
+    activeWordColor: '#EF4444',
+    outlineColor: '#000000',
+    outlineWidth: 1,
+    shadow: { enabled: true, color: 'rgba(239, 68, 68, 0.75)', blur: 12, offsetX: 0, offsetY: 0 },
+    backgroundStyle: 'none',
+    backgroundColor: undefined,
+    backgroundOpacity: 0,
+    textAlign: 'center',
+    position: { vertical: 'bottom', horizontal: 'center', offsetY: 0, offsetX: 0 },
+    maxLineLength: 30,
+    maxLines: 2,
+    animationMode: 'karaoke',
+    safeAreaMarginPercent: 12,
+    lineHeightMultiplier: 1.35,
+    scriptAccent: true,
+    scriptFont: "'Dancing Script', 'Playfair Display', cursive",
+  },
   {
     id: 'autocap-karaoke',
-    name: 'AutoCap Viral Karaoke',
+    name: 'Capzee Viral Karaoke',
     fontFamily: 'Montserrat',
-    fontSize: 38,
+    fontSize: 26,
     fontWeight: '800',
     textColor: '#FFFFFF',
     activeWordColor: '#FFDF00',
     outlineColor: '#000000',
-    outlineWidth: 3,
-    shadow: { enabled: true, color: '#000000', blur: 6, offsetX: 1, offsetY: 1 },
+    outlineWidth: 2,
+    shadow: { enabled: true, color: '#000000', blur: 6, offsetX: 1, offsetY: 2 },
     backgroundStyle: 'pill',
-    backgroundColor: '#111111',
+    backgroundColor: '#18191B',
     backgroundOpacity: 0.85,
     textAlign: 'center',
-    position: { vertical: 'bottom', horizontal: 'center', offsetY: -8, offsetX: 0 },
+    position: { vertical: 'bottom', horizontal: 'center', offsetY: 0, offsetX: 0 },
     maxLineLength: 32,
     maxLines: 2,
     animationMode: 'karaoke',
-    safeAreaMarginPercent: 5,
+    safeAreaMarginPercent: 12,
+    lineHeightMultiplier: 1.35,
+  },
+  {
+    id: 'emerald-pop',
+    name: 'Capzee Emerald Pop',
+    fontFamily: 'Montserrat',
+    fontSize: 26,
+    fontWeight: '800',
+    textColor: '#FFFFFF',
+    activeWordColor: '#16A34A',
+    outlineColor: '#000000',
+    outlineWidth: 2,
+    shadow: { enabled: true, color: '#000000', blur: 6, offsetX: 1, offsetY: 2 },
+    backgroundStyle: 'pill',
+    backgroundColor: '#18191B',
+    backgroundOpacity: 0.85,
+    textAlign: 'center',
+    position: { vertical: 'bottom', horizontal: 'center', offsetY: 0, offsetX: 0 },
+    maxLineLength: 32,
+    maxLines: 2,
+    animationMode: 'karaoke',
+    safeAreaMarginPercent: 12,
     lineHeightMultiplier: 1.35,
   },
   {
     id: 'fluxocut-pop',
-    name: 'FluxoCut Cyber Pop',
+    name: 'Capzee Cyber Pop',
     fontFamily: 'Inter',
     fontSize: 40,
     fontWeight: '900',

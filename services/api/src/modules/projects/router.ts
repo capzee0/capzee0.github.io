@@ -131,6 +131,20 @@ projectsRouter.post(
   }
 );
 
+// GET /projects/:projectId/media
+projectsRouter.get('/:projectId/media', (req: Request, res: Response, next: NextFunction) => {
+  const projectId = req.params.projectId as string;
+  const project = getProject(projectId);
+  if (!project) return next(createError('Project not found', 404, 'PROJECT_NOT_FOUND'));
+
+  const videoPath = project.originalAssetPath;
+  if (!videoPath || !fs.existsSync(videoPath)) {
+    return next(createError('Media file not found', 404, 'MEDIA_NOT_FOUND'));
+  }
+
+  res.sendFile(path.resolve(videoPath));
+});
+
 // POST /projects/:projectId/render
 projectsRouter.post('/:projectId/render', async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -315,6 +329,85 @@ projectsRouter.get('/:projectId/export', (req: Request, res: Response, next: Nex
     }
 
     return next(createError(`Unsupported export format: ${format}`, 400, 'INVALID_FORMAT'));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /projects/:projectId/trim-silence
+projectsRouter.post('/:projectId/trim-silence', (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const projectId = req.params.projectId as string;
+    const project = getProject(projectId);
+    if (!project) return next(createError('Project not found', 404, 'PROJECT_NOT_FOUND'));
+
+    const rawTranscript = getTranscript(projectId);
+    if (!rawTranscript) {
+      return next(createError('No transcript found. Transcribe first to detect pauses.', 422, 'NO_TRANSCRIPT'));
+    }
+
+    const { sensitivity = 'balanced' } = req.body as { sensitivity?: 'gentle' | 'balanced' | 'tight' };
+    const minPauseSec = sensitivity === 'gentle' ? 0.9 : sensitivity === 'tight' ? 0.4 : 0.6;
+
+    const transcript = rawTranscript as Transcript;
+    const segments = transcript.segments || [];
+
+    const allWords: Array<{ text: string; start: number; end: number }> = [];
+    for (const seg of segments) {
+      if (seg.words && seg.words.length > 0) {
+        for (const w of seg.words) {
+          allWords.push({ text: w.text, start: w.start, end: w.end });
+        }
+      } else {
+        allWords.push({ text: seg.text, start: seg.start, end: seg.end });
+      }
+    }
+
+    allWords.sort((a, b) => a.start - b.start);
+
+    const removedClips: Array<{ id: string; start: number; end: number; duration: number; reason: string }> = [];
+
+    // Leading pause before first word
+    if (allWords.length > 0 && allWords[0].start > minPauseSec) {
+      const dur = Number(allWords[0].start.toFixed(2));
+      removedClips.push({
+        id: 'silence-0',
+        start: 0,
+        end: allWords[0].start,
+        duration: dur,
+        reason: `Initial dead air (${dur}s pause)`,
+      });
+    }
+
+    // Gaps between words
+    for (let i = 0; i < allWords.length - 1; i++) {
+      const currentEnd = allWords[i].end;
+      const nextStart = allWords[i + 1].start;
+      const gap = nextStart - currentEnd;
+      if (gap >= minPauseSec) {
+        const dur = Number(gap.toFixed(2));
+        removedClips.push({
+          id: `silence-${i + 1}`,
+          start: Number(currentEnd.toFixed(2)),
+          end: Number(nextStart.toFixed(2)),
+          duration: dur,
+          reason: `Dead air between "${allWords[i].text}" and "${allWords[i + 1].text}" (${dur}s)`,
+        });
+      }
+    }
+
+    const totalRemoved = removedClips.reduce((acc, c) => acc + c.duration, 0);
+
+    res.json({
+      success: true,
+      data: {
+        sensitivity,
+        minPauseSec,
+        removedClips,
+        totalRemovedSeconds: Number(totalRemoved.toFixed(2)),
+        count: removedClips.length,
+      },
+    });
   } catch (err) {
     next(err);
   }

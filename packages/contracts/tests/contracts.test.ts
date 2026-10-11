@@ -1,4 +1,4 @@
-import { describe, it } from 'node:test';
+import { describe, it } from 'vitest';
 import assert from 'node:assert/strict';
 import {
   WordSchema,
@@ -144,7 +144,7 @@ describe('Contracts — Subtitle Generation', () => {
   it('parses raw SRT content back into validated Transcript', () => {
     const rawSrt = `1
 00:00:01,000 --> 00:00:03,500
-AutoCap and FluxoCut are awesome
+Capzee Studio is awesome
 
 2
 00:00:04,000 --> 00:00:06,000
@@ -153,7 +153,7 @@ Viral captions rendered fast`;
     assert.equal(parsed.segments.length, 2);
     assert.equal(parsed.segments[0].start, 1.0);
     assert.equal(parsed.segments[0].end, 3.5);
-    assert.equal(parsed.segments[0].text, 'AutoCap and FluxoCut are awesome');
+    assert.equal(parsed.segments[0].text, 'Capzee Studio is awesome');
     assert.ok(parsed.segments[0].words && parsed.segments[0].words.length > 0);
   });
 
@@ -199,3 +199,39 @@ describe('Contracts — Social Captions Schema', () => {
     assert.equal(SocialToneSchema.safeParse('unknown_tone').success, false);
   });
 });
+
+describe('Contracts — CapCut-Style Caption Preset Catalogue', () => {
+  it('contains at least 20 distinct usable presets', () => {
+    assert.ok(CAPTION_PRESETS.length >= 20, `Expected at least 20 presets, found ${CAPTION_PRESETS.length}`);
+  });
+
+  it('ensures each preset has distinct visual effects and passes schema validation', () => {
+    const ids = new Set<string>();
+    for (const preset of CAPTION_PRESETS) {
+      assert.ok(preset.id, 'Preset must have an id');
+      assert.ok(!ids.has(preset.id), `Duplicate preset id found: ${preset.id}`);
+      ids.add(preset.id);
+
+      assert.ok(preset.name, `Preset ${preset.id} must have a name`);
+      assert.ok(preset.category, `Preset ${preset.id} must have a category`);
+      assert.ok(preset.animationEffect, `Preset ${preset.id} must have an animationEffect`);
+      assert.ok(preset.fontFamily, `Preset ${preset.id} must specify fontFamily`);
+      assert.ok(preset.fontSize > 0, `Preset ${preset.id} must have positive fontSize`);
+
+      const parsed = CaptionStyleSchema.safeParse({
+        ...preset,
+        aspectRatio: '9:16',
+      });
+      assert.ok(parsed.success, `Preset ${preset.id} failed CaptionStyleSchema validation: ${JSON.stringify(parsed)}`);
+    }
+  });
+
+  it('covers all major categories: social, karaoke, editorial, minimal', () => {
+    const categories = new Set(CAPTION_PRESETS.map((p) => p.category));
+    assert.ok(categories.has('social'), 'Should have social presets');
+    assert.ok(categories.has('karaoke'), 'Should have karaoke presets');
+    assert.ok(categories.has('editorial'), 'Should have editorial presets');
+    assert.ok(categories.has('minimal'), 'Should have minimal presets');
+  });
+});
+

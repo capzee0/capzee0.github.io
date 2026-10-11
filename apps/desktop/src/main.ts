@@ -11,6 +11,7 @@ function createWindow(): void {
     minWidth: 1024,
     minHeight: 700,
     title: 'Capzee — AI Video Captioning & Smart Editing',
+    icon: path.join(__dirname, '../assets/icon.png'),
     backgroundColor: '#0f0f11',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),

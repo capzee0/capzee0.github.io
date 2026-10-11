@@ -4,46 +4,88 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Deep charcoal backgrounds
+        // Orange & Terracotta Backgrounds (NO BLACK)
         bg: {
-          primary: '#0f0f11',
-          secondary: '#18181b',
-          tertiary: '#1e1e24',
-          panel: '#16161a',
-          elevated: '#222228',
+          primary: '#D96846',   // Terracotta Burnt Orange as main background
+          secondary: '#C85A3A', // Rich Burnt Orange
+          tertiary: '#B84E30',  // Deep Terracotta
+          panel: '#CDCBD6',     // Lavender Tint for panels & containers
+          elevated: '#E3E1EB',  // Light Lavender surface
+          light: '#FAF7F5',     // Cream light
         },
-        // Blue-violet accent palette
+        // Lavender Neutral Palette
+        lavender: {
+          DEFAULT: '#CDCBD6',
+          light: '#EBEAEF',
+          dark: '#B0ADC0',
+          panel: '#CDCBD6',
+        },
+        // Terracotta / Burnt Orange Palette
+        terracotta: {
+          DEFAULT: '#D96846',
+          hover: '#C25534',
+          dark: '#B04728',
+          light: '#F8DFD7',
+        },
+        // Olive Green Secondary Accent
+        olive: {
+          DEFAULT: '#16A34A',
+          hover: '#15803D',
+          light: '#22C55E',
+          dark: '#14532D',
+        },
+        // Deep Forest Green / Charcoal Text & Dark Elements
+        forest: {
+          DEFAULT: '#2F3020',
+          dark: '#1F2015',
+          light: '#4B4D34',
+        },
+        palette: {
+          neutral: '#CDCBD6',
+          primary: '#D96846',
+          secondary: '#16A34A',
+          dark: '#2F3020',
+          terracotta: '#D96846',
+          olive: '#16A34A',
+          lavender: '#CDCBD6',
+          forest: '#2F3020',
+        },
+        // Accent Colors (BLUE COMPLETELY REMOVED - mapped to Olive & Forest)
         accent: {
-          blue: '#3b82f6',
-          'blue-dim': '#1d4ed8',
-          violet: '#7c3aed',
-          'violet-dim': '#5b21b6',
-          cyan: '#06b6d4',
-          indigo: '#4f46e5',
+          blue: '#16A34A',        // Olive green replaces blue
+          'blue-dim': '#15803D',  // Dark olive replaces blue-dim
+          violet: '#2F3020',      // Forest green replaces violet
+          'violet-dim': '#1F2015',
+          cyan: '#16A34A',
+          indigo: '#16A34A',
+          terracotta: '#D96846',
+          olive: '#16A34A',
+          emerald: '#16A34A',     // Olive green secondary CTA
         },
-        // Surface colours
+        // Surface colours (Lavender tint & crisp cards)
         surface: {
-          DEFAULT: '#1e1e24',
-          hover: '#26262e',
-          active: '#2c2c36',
-          border: '#2a2a35',
-          'border-subtle': '#1e1e28',
+          DEFAULT: '#CDCBD6',
+          hover: '#DBD8E3',
+          active: '#C0BDCB',
+          border: 'rgba(47, 48, 32, 0.15)',
+          'border-subtle': 'rgba(47, 48, 32, 0.08)',
         },
-        'surface-DEFAULT': '#1e1e24',
-        // Text colours
+        'surface-DEFAULT': '#CDCBD6',
+        // Text colours - Deep Forest Green and Crisp White
         text: {
-          primary: '#f8f8f9',
-          secondary: '#9ca3af',
-          muted: '#6b7280',
-          disabled: '#4b5563',
-          accent: '#60a5fa',
+          primary: '#2F3020',
+          secondary: '#454832',
+          muted: '#63664D',
+          disabled: '#8A8C74',
+          accent: '#16A34A',
+          light: '#FFFFFF',
         },
         // Status colours
         status: {
-          success: '#22c55e',
-          warning: '#f59e0b',
-          error: '#ef4444',
-          info: '#3b82f6',
+          success: '#16A34A',
+          warning: '#D96846',
+          error: '#B91C1C',
+          info: '#16A34A',
         },
       },
       fontFamily: {
@@ -80,10 +122,10 @@ export default {
         },
       },
       boxShadow: {
-        panel: '0 0 0 1px rgba(255,255,255,0.06)',
-        glow: '0 0 20px rgba(59, 130, 246, 0.3)',
-        'glow-violet': '0 0 20px rgba(124, 58, 237, 0.3)',
-        overlay: '0 20px 60px rgba(0, 0, 0, 0.8)',
+        panel: '0 0 0 1px rgba(47, 48, 32, 0.1)',
+        glow: '0 0 20px rgba(89, 98, 53, 0.35)',
+        'glow-terracotta': '0 0 20px rgba(217, 104, 70, 0.35)',
+        overlay: '0 20px 60px rgba(47, 48, 32, 0.4)',
       },
     },
   },

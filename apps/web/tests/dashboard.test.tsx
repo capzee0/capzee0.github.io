@@ -29,7 +29,7 @@ describe('DashboardPage', () => {
       </MemoryRouter>
     );
     // Empty state appears after loading
-    await screen.findByText(/no projects yet/i);
+    await screen.findByText(/nothing here yet/i);
   });
 });
 

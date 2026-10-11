@@ -83,10 +83,14 @@ def generate_ass_subtitles(transcript: Transcript, style: dict) -> str:
         "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text",
     ]
 
+    is_uppercase = bool(style.get("uppercase", False))
+
     for seg in transcript.segments:
         start_t = _format_ass_time(seg.start)
         end_t = _format_ass_time(seg.end)
         text = seg.text.replace("\n", "\\N").replace("{", "(").replace("}", ")")
+        if is_uppercase:
+            text = text.upper()
 
         # If words exist and word animation is requested, highlight active words
         words = getattr(seg, "words", None) or []
@@ -97,8 +101,9 @@ def generate_ass_subtitles(transcript: Transcript, style: dict) -> str:
             for w in words:
                 w_start = _format_ass_time(w.start)
                 w_end = _format_ass_time(w.end)
+                w_text = w.text.upper() if is_uppercase else w.text
                 ass_content.append(
-                    f"Dialogue: 0,{w_start},{w_end},Default,,0,0,0,,{{\\c{highlight_color}&}}{w.text}"
+                    f"Dialogue: 0,{w_start},{w_end},Default,,0,0,0,,{{\\c{highlight_color}&}}{w_text}"
                 )
         else:
             ass_content.append(f"Dialogue: 0,{start_t},{end_t},Default,,0,0,0,,{text}")
