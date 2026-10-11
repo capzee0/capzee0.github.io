@@ -212,11 +212,11 @@ export function ExportModal({
             </div>
 
             {/* Tab content */}
-            <div className="p-6 overflow-y-auto space-y-4 flex-1">
+            <div className="p-3.5 sm:p-6 overflow-y-auto space-y-3 sm:space-y-4 flex-1">
               {activeTab === 'subtitles' ? (
-                <div className="space-y-3">
+                <div className="space-y-2.5 sm:space-y-3">
                   {/* SRT */}
-                  <div className="flex items-center justify-between p-3.5 bg-[#FAF7F5] border border-[#2F3020]/15 rounded-xl shadow-xs">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-3.5 bg-[#FAF7F5] border border-[#2F3020]/15 rounded-xl shadow-xs gap-2.5">
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-sm text-[#2F3020]">SubRip (.SRT)</span>
@@ -224,27 +224,27 @@ export function ExportModal({
                       </div>
                       <p className="text-xs text-[#2F3020]/70 mt-0.5">Compatible with YouTube, Premiere, DaVinci, Final Cut</p>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 self-end sm:self-auto">
                       <button
                         onClick={() => handleCopy(srtContent, 'srt')}
-                        className="text-xs px-2.5 py-1.5 flex items-center gap-1.5 bg-[#CDCBD6] hover:bg-[#CDCBD6]/80 text-[#2F3020] rounded font-semibold transition-colors"
+                        className="text-xs px-2.5 py-1.5 flex items-center gap-1.5 bg-[#CDCBD6] hover:bg-[#CDCBD6]/80 text-[#2F3020] rounded font-semibold transition-colors cursor-pointer"
                         title="Copy SRT to clipboard"
                       >
                         {copiedFormat === 'srt' ? <Check className="w-3.5 h-3.5 text-[#16A34A]" /> : <Copy className="w-3.5 h-3.5" />}
-                        {copiedFormat === 'srt' ? 'Copied' : 'Copy'}
+                        <span>{copiedFormat === 'srt' ? 'Copied' : 'Copy'}</span>
                       </button>
                       <button
                         onClick={downloadSRT}
-                        className="text-xs px-3 py-1.5 flex items-center gap-1.5 bg-[#16A34A] hover:bg-[#15803D] text-white rounded font-bold shadow-xs transition-colors"
+                        className="text-xs px-3 py-1.5 flex items-center gap-1.5 bg-[#16A34A] hover:bg-[#15803D] text-white rounded font-bold shadow-xs transition-colors cursor-pointer"
                       >
                         <Download className="w-3.5 h-3.5" />
-                        Download
+                        <span>Download</span>
                       </button>
                     </div>
                   </div>
 
                   {/* VTT */}
-                  <div className="flex items-center justify-between p-3.5 bg-[#FAF7F5] border border-[#2F3020]/15 rounded-xl shadow-xs">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-3.5 bg-[#FAF7F5] border border-[#2F3020]/15 rounded-xl shadow-xs gap-2.5">
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-sm text-[#2F3020]">WebVTT (.VTT)</span>
@@ -252,61 +252,61 @@ export function ExportModal({
                       </div>
                       <p className="text-xs text-[#2F3020]/70 mt-0.5">HTML5 video players, TikTok web upload, Vimeo</p>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 self-end sm:self-auto">
                       <button
                         onClick={() => handleCopy(vttContent, 'vtt')}
-                        className="text-xs px-2.5 py-1.5 flex items-center gap-1.5 bg-[#CDCBD6] hover:bg-[#CDCBD6]/80 text-[#2F3020] rounded font-semibold transition-colors"
+                        className="text-xs px-2.5 py-1.5 flex items-center gap-1.5 bg-[#CDCBD6] hover:bg-[#CDCBD6]/80 text-[#2F3020] rounded font-semibold transition-colors cursor-pointer"
                         title="Copy VTT to clipboard"
                       >
                         {copiedFormat === 'vtt' ? <Check className="w-3.5 h-3.5 text-[#16A34A]" /> : <Copy className="w-3.5 h-3.5" />}
-                        {copiedFormat === 'vtt' ? 'Copied' : 'Copy'}
+                        <span>{copiedFormat === 'vtt' ? 'Copied' : 'Copy'}</span>
                       </button>
                       <button
                         onClick={downloadVTT}
-                        className="text-xs px-3 py-1.5 flex items-center gap-1.5 bg-[#16A34A] hover:bg-[#15803D] text-white rounded font-bold shadow-xs transition-colors"
+                        className="text-xs px-3 py-1.5 flex items-center gap-1.5 bg-[#16A34A] hover:bg-[#15803D] text-white rounded font-bold shadow-xs transition-colors cursor-pointer"
                       >
                         <Download className="w-3.5 h-3.5" />
-                        Download
+                        <span>Download</span>
                       </button>
                     </div>
                   </div>
 
                   {/* Plain text */}
-                  <div className="flex items-center justify-between p-3.5 bg-[#FAF7F5] border border-[#2F3020]/15 rounded-xl shadow-xs">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-3.5 bg-[#FAF7F5] border border-[#2F3020]/15 rounded-xl shadow-xs gap-2.5">
                     <div>
                       <span className="font-bold text-sm text-[#2F3020]">Clean Script (.TXT)</span>
                       <p className="text-xs text-[#2F3020]/70 mt-0.5">Plain transcribed text without timestamps</p>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 self-end sm:self-auto">
                       <button
                         onClick={() => handleCopy(txtContent, 'txt')}
-                        className="text-xs px-2.5 py-1.5 flex items-center gap-1.5 bg-[#CDCBD6] hover:bg-[#CDCBD6]/80 text-[#2F3020] rounded font-semibold transition-colors"
+                        className="text-xs px-2.5 py-1.5 flex items-center gap-1.5 bg-[#CDCBD6] hover:bg-[#CDCBD6]/80 text-[#2F3020] rounded font-semibold transition-colors cursor-pointer"
                       >
                         {copiedFormat === 'txt' ? <Check className="w-3.5 h-3.5 text-[#16A34A]" /> : <Copy className="w-3.5 h-3.5" />}
-                        {copiedFormat === 'txt' ? 'Copied' : 'Copy'}
+                        <span>{copiedFormat === 'txt' ? 'Copied' : 'Copy'}</span>
                       </button>
                       <button
                         onClick={downloadTXT}
-                        className="text-xs px-3 py-1.5 flex items-center gap-1.5 bg-[#16A34A] hover:bg-[#15803D] text-white rounded font-bold shadow-xs transition-colors"
+                        className="text-xs px-3 py-1.5 flex items-center gap-1.5 bg-[#16A34A] hover:bg-[#15803D] text-white rounded font-bold shadow-xs transition-colors cursor-pointer"
                       >
                         <Download className="w-3.5 h-3.5" />
-                        Download
+                        <span>Download</span>
                       </button>
                     </div>
                   </div>
 
                   {/* JSON */}
-                  <div className="flex items-center justify-between p-3.5 bg-[#FAF7F5] border border-[#2F3020]/15 rounded-xl shadow-xs">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-3.5 bg-[#FAF7F5] border border-[#2F3020]/15 rounded-xl shadow-xs gap-2.5">
                     <div>
                       <span className="font-bold text-sm text-[#2F3020]">Full Transcript (.JSON)</span>
                       <p className="text-xs text-[#2F3020]/70 mt-0.5">Complete metadata with word-level start & end timestamps</p>
                     </div>
                     <button
                       onClick={downloadJSON}
-                      className="text-xs px-3 py-1.5 flex items-center gap-1.5 bg-[#16A34A] hover:bg-[#15803D] text-white rounded font-bold shadow-xs transition-colors"
+                      className="text-xs px-3 py-1.5 flex items-center gap-1.5 bg-[#16A34A] hover:bg-[#15803D] text-white rounded font-bold shadow-xs transition-colors self-end sm:self-auto cursor-pointer"
                     >
                       <Download className="w-3.5 h-3.5" />
-                      Download
+                      <span>Download</span>
                     </button>
                   </div>
                 </div>

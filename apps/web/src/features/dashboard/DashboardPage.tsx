@@ -285,17 +285,20 @@ export function DashboardPage() {
   const totalDuration = projects.reduce((s, p) => s + (p.durationSeconds ?? 0), 0);
 
   return (
-    <div className="flex-1 h-full min-h-0 overflow-hidden px-3 sm:px-6 py-2 sm:py-3 bg-[#D96846] text-[#2F3020] flex flex-col">
+    <div className="flex-1 h-full min-h-0 overflow-y-auto md:overflow-hidden px-3 sm:px-6 py-2 sm:py-3 bg-[#D96846] text-[#2F3020] flex flex-col">
       <div className="max-w-6xl w-full mx-auto flex-1 min-h-0 flex flex-col gap-2 sm:gap-2.5">
 
-        {/* Top Compact Section: dropzone (left) + 2x2 Stats (right) */}
-        <div className={cn("flex flex-col md:flex-row gap-2.5 items-stretch flex-shrink-0 transition-all duration-200", selectedFile ? "h-[142px]" : "h-[124px]")}>
+        {/* Top Section: dropzone (left) + Stats (right) */}
+        <div className={cn(
+          "flex flex-col md:flex-row gap-2.5 items-stretch flex-shrink-0 transition-all duration-200",
+          selectedFile ? "min-h-[220px] md:h-[142px]" : "min-h-[130px] md:h-[124px]"
+        )}>
 
           {/* Compact Drop Zone / Video Preview Box */}
           <div
             {...getRootProps()}
             className={cn(
-              "relative flex-1 min-w-0 h-full rounded-2xl p-2.5 sm:p-3 flex flex-col justify-between transition-all duration-200 bg-[#FAF7F5] shadow-xs overflow-hidden",
+              "relative flex-1 min-w-0 rounded-2xl p-2.5 sm:p-3 flex flex-col justify-between transition-all duration-200 bg-[#FAF7F5] shadow-xs overflow-hidden",
               selectedFile
                 ? "border-2 border-[#16A34A]/60"
                 : "border-2 border-dashed border-[#2F3020]/25 hover:border-[#16A34A] hover:bg-white cursor-pointer",
@@ -312,9 +315,9 @@ export function DashboardPage() {
 
             {selectedFile ? (
               /* Selected Video Mode: Spoken language + Indian toggle + Caption output */
-              <div className="flex items-center gap-3.5 h-full w-full">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3.5 h-full w-full">
                 {/* 9:16 Video Thumbnail */}
-                <div className="h-full aspect-[9/16] rounded-xl overflow-hidden flex-shrink-0 border border-[#2F3020]/20 bg-black/95 shadow-xs relative">
+                <div className="h-20 sm:h-full aspect-[9/16] rounded-xl overflow-hidden flex-shrink-0 border border-[#2F3020]/20 bg-black/95 shadow-xs relative self-center sm:self-auto">
                   {thumbUrl ? (
                     <img
                       src={thumbUrl}
@@ -332,7 +335,7 @@ export function DashboardPage() {
                 </div>
 
                 {/* Middle: Controls */}
-                <div className="flex-1 min-w-0 flex flex-col justify-between h-full py-0.5">
+                <div className="flex-1 min-w-0 flex flex-col justify-between h-full py-0.5 gap-2 sm:gap-0">
                   {/* Top Status & Title Row */}
                   <div className="flex items-center justify-between gap-2">
                     <input
@@ -358,7 +361,7 @@ export function DashboardPage() {
                   </div>
 
                   {/* Settings Row: Spoken Language + Caption Output */}
-                  <div className="grid grid-cols-2 gap-2.5 items-center mt-1">
+                  <div className="grid grid-cols-1 xs:grid-cols-2 gap-2 sm:gap-2.5 items-center mt-1">
                     {/* Spoken Language Block */}
                     <div>
                       <div className="flex items-center justify-between mb-1">
@@ -435,12 +438,12 @@ export function DashboardPage() {
                 </div>
 
                 {/* Right: Generate captions button */}
-                <div className="flex-shrink-0 flex items-center pr-1">
+                <div className="flex-shrink-0 flex items-center sm:pr-1 w-full sm:w-auto">
                   <button
                     type="button"
                     onClick={(e) => { e.stopPropagation(); void handleCreate(); }}
                     disabled={creating}
-                    className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full bg-[#16A34A] hover:bg-[#15803D] text-white text-[11px] font-bold shadow-xs transition-transform active:scale-95 disabled:opacity-60 cursor-pointer"
+                    className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2 sm:py-2.5 rounded-full bg-[#16A34A] hover:bg-[#15803D] text-white text-[11px] font-bold shadow-xs transition-transform active:scale-95 disabled:opacity-60 cursor-pointer"
                     id="dashboard-start-btn"
                   >
                     {creating ? (
@@ -459,7 +462,7 @@ export function DashboardPage() {
               </div>
             ) : (
               /* Idle Drop State: Exact reference matching layout */
-              <div className="flex flex-col justify-between h-full relative z-10">
+              <div className="flex flex-col justify-between h-full relative z-10 gap-2">
                 {/* Top row */}
                 <div className="flex items-center justify-between">
                   <div className="w-7 h-7 rounded-xl bg-[#D5EBD7] text-[#16A34A] flex items-center justify-center flex-shrink-0 shadow-2xs">
@@ -471,9 +474,9 @@ export function DashboardPage() {
                 </div>
 
                 {/* Bottom row: Typography + New Project Button */}
-                <div className="flex items-end justify-between gap-2">
+                <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2">
                   <div className="min-w-0">
-                    <h2 className="text-[14px] sm:text-[15.5px] font-black text-[#2F3020] tracking-tight leading-snug">
+                    <h2 className="text-[13px] sm:text-[15.5px] font-black text-[#2F3020] tracking-tight leading-snug">
                       Drop your media, <span className="italic font-serif font-normal text-[#16A34A]">start generating.</span>
                     </h2>
                     <p className="text-[10px] text-[#2F3020]/65 mt-0.5 font-normal truncate">
@@ -485,7 +488,7 @@ export function DashboardPage() {
                   <button
                     type="button"
                     onClick={(e) => { e.stopPropagation(); openFilePicker(); }}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#16A34A] hover:bg-[#15803D] text-white text-[11px] font-bold shadow-xs transition-transform active:scale-95 flex-shrink-0 cursor-pointer"
+                    className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-full bg-[#16A34A] hover:bg-[#15803D] text-white text-[11px] font-bold shadow-xs transition-transform active:scale-95 flex-shrink-0 cursor-pointer w-full sm:w-auto"
                     id="dashboard-new-project-btn"
                   >
                     <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
@@ -496,8 +499,8 @@ export function DashboardPage() {
             )}
           </div>
 
-          {/* Stats: Compact 2x2 Cream Cards strictly matching the 124px height */}
-          <div className="grid grid-cols-2 gap-2 w-72 sm:w-80 flex-shrink-0 h-full">
+          {/* Stats: Responsive Cards (2x2 on mobile, 4x1 on tablet, 2x2 on desktop) */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-2 gap-2 w-full md:w-72 lg:w-80 flex-shrink-0 md:h-full">
             {[
               { label: "PROJECTS ON DEVICE", value: String(projects.length) },
               { label: "FOOTAGE IN REEL", value: totalDuration > 0 ? formatDuration(totalDuration) : "—" },
@@ -506,10 +509,10 @@ export function DashboardPage() {
             ].map(({ label, value }) => (
               <div
                 key={label}
-                className="bg-[#FAF7F5] border border-[#2F3020]/15 rounded-2xl px-3.5 py-1.5 flex flex-col justify-between shadow-2xs hover:border-[#16A34A]/40 transition-colors"
+                className="bg-[#FAF7F5] border border-[#2F3020]/15 rounded-2xl px-3 py-1.5 sm:px-3.5 sm:py-2 flex flex-col justify-between shadow-2xs hover:border-[#16A34A]/40 transition-colors min-h-[50px] md:min-h-0"
               >
-                <p className="text-[8px] sm:text-[8.5px] font-mono font-medium tracking-wider uppercase text-[#2F3020]/50 truncate">{label}</p>
-                <p className="text-[16px] sm:text-[18px] font-black text-[#2F3020] leading-none">{value}</p>
+                <p className="text-[7.5px] sm:text-[8.5px] font-mono font-medium tracking-wider uppercase text-[#2F3020]/50 truncate">{label}</p>
+                <p className="text-[15px] sm:text-[18px] font-black text-[#2F3020] leading-none">{value}</p>
               </div>
             ))}
           </div>
@@ -548,7 +551,7 @@ export function DashboardPage() {
             </div>
           ) : (
             <div className="flex-1 min-h-0 overflow-y-auto pr-1">
-              <div className="flex flex-wrap gap-3.5 pb-2 items-start">
+              <div className="grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2.5 sm:gap-3.5 pb-2 items-start">
                 {projects.map((project) => (
                   <CompactProjectCard
                     key={project.id}
@@ -644,7 +647,7 @@ function CompactProjectCard({
       role="button"
       tabIndex={0}
       onKeyDown={(e) => e.key === "Enter" && onOpen()}
-      className="relative w-[138px] sm:w-[150px] aspect-[9/16] max-h-[calc(100vh-270px)] rounded-2xl overflow-hidden bg-[#FAF7F5] border border-[#2F3020]/25 shadow-xs hover:shadow-xl hover:border-[#16A34A] transition-all duration-200 cursor-pointer group flex flex-col justify-between flex-shrink-0"
+      className="relative w-full aspect-[9/16] rounded-2xl overflow-hidden bg-[#FAF7F5] border border-[#2F3020]/25 shadow-xs hover:shadow-xl hover:border-[#16A34A] transition-all duration-200 cursor-pointer group flex flex-col justify-between"
       aria-label={`Open project ${project.title}`}
     >
       {/* Thumbnail or Fallback */}

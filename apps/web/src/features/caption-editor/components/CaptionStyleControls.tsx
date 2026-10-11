@@ -89,7 +89,7 @@ export function CaptionStyleControls({
 
       {/* Typography: Font & Weight */}
       <section className="space-y-2.5">
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 xs:grid-cols-2 gap-2">
           <div>
             <label className="text-xs font-bold text-[#2F3020]/90" htmlFor="ctrl-font">
               Font Family
@@ -175,7 +175,7 @@ export function CaptionStyleControls({
       {/* Colors */}
       <section className="space-y-2.5 bg-white p-3 rounded-xl border border-[#2F3020]/15 shadow-2xs">
         <label className="text-xs font-bold text-[#2F3020]/90 uppercase tracking-wide">Color & Highlight</label>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 xs:grid-cols-2 gap-2">
           <div className="flex items-center gap-2.5 bg-[#FAF7F5] p-2 rounded-lg border border-[#2F3020]/15 shadow-2xs">
             <input
               type="color"

@@ -14,7 +14,7 @@ export function CaptionPresetGallery({
   className,
 }: CaptionPresetGalleryProps) {
   return (
-    <div className={cn("grid grid-cols-2 gap-2.5", className)}>
+    <div className={cn("grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 gap-2.5", className)}>
       {(CAPTION_PRESETS as CaptionPreset[]).map((preset) => (
         <CaptionPresetCard
           key={preset.id}

@@ -53,6 +53,7 @@ export function EditorPage() {
 
   // Dedicated Caption & Presets Studio UI
   const [studioTab, setStudioTab] = useState<StudioTab>('presets');
+  const [mobileTab, setMobileTab] = useState<'preview' | 'presets' | 'transcript' | 'style'>('preview');
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>(
     (captionStyle?.aspectRatio as AspectRatio) || '9:16'
   );
@@ -564,40 +565,40 @@ export function EditorPage() {
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#D96846] text-[#2F3020] select-none font-sans">
       {/* ── 1. Top Header Bar: Capzee Theme ── */}
-      <header className="h-12 flex-shrink-0 bg-[#CDCBD6] border-b border-[#2F3020]/20 px-4 flex items-center justify-between z-20 text-[#2F3020] shadow-xs">
+      <header className="h-12 flex-shrink-0 bg-[#CDCBD6] border-b border-[#2F3020]/20 px-2 sm:px-4 flex items-center justify-between z-20 text-[#2F3020] shadow-xs">
         {/* Left: Back & Project Title */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1.5 sm:gap-3 min-w-0">
           <button
             onClick={() => navigate('/dashboard')}
-            className="flex items-center gap-1.5 text-xs font-bold text-[#2F3020]/80 hover:text-[#2F3020] transition-colors px-2 py-1 rounded-lg hover:bg-[#FAF7F5] group cursor-pointer"
+            className="flex items-center gap-1 text-xs font-bold text-[#2F3020]/80 hover:text-[#2F3020] transition-colors p-1 sm:px-2 sm:py-1 rounded-lg hover:bg-[#FAF7F5] group cursor-pointer flex-shrink-0"
             title="Back to Projects Dashboard"
           >
             <ChevronLeft className="w-4 h-4 text-[#2F3020]/60 group-hover:text-[#2F3020] transition-colors" />
             <span className="hidden sm:inline">Projects</span>
           </button>
 
-          <div className="h-4 w-px bg-[#2F3020]/15" />
+          <div className="h-4 w-px bg-[#2F3020]/15 hidden xs:block" />
 
-          <div className="flex items-center gap-2.5">
-            <img src="/capzee-icon.png" alt="Capzee" className="w-5 h-5 object-contain drop-shadow-xs" />
-            <span className="text-xs font-bold text-[#2F3020] tracking-tight truncate max-w-xs md:max-w-md">
+          <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
+            <img src="/capzee-icon.png" alt="Capzee" className="w-4.5 h-4.5 sm:w-5 sm:h-5 object-contain drop-shadow-xs flex-shrink-0" />
+            <span className="text-[11px] sm:text-xs font-bold text-[#2F3020] tracking-tight truncate max-w-[80px] xs:max-w-[120px] sm:max-w-xs md:max-w-md">
               {currentProject?.title || 'Video Caption Project'}
             </span>
-            <span className="text-[10px] text-[#16A34A] bg-[#16A34A]/10 border border-[#16A34A]/25 font-mono font-bold px-2 py-0.5 rounded-full">
+            <span className="hidden xs:inline-block text-[9px] sm:text-[10px] text-[#16A34A] bg-[#16A34A]/10 border border-[#16A34A]/25 font-mono font-bold px-1.5 sm:px-2 py-0.5 rounded-full flex-shrink-0">
               {formatDuration(duration || 20.5)}
             </span>
           </div>
         </div>
 
         {/* Center: Aspect Ratio Selector with Visual Device Icons */}
-        <div className="flex items-center gap-1 bg-[#FAF7F5] p-1 rounded-xl border border-[#2F3020]/15 shadow-2xs">
+        <div className="flex items-center gap-0.5 sm:gap-1 bg-[#FAF7F5] p-0.5 sm:p-1 rounded-xl border border-[#2F3020]/15 shadow-2xs">
           <button
             onClick={() => {
               setAspectRatio('9:16');
               setCaptionStyle({ aspectRatio: '9:16' });
             }}
             className={cn(
-              'px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer',
+              'px-1.5 sm:px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer',
               aspectRatio === '9:16'
                 ? 'bg-[#16A34A] text-white shadow-xs'
                 : 'text-[#2F3020]/70 hover:text-[#2F3020] hover:bg-black/5'
@@ -605,7 +606,7 @@ export function EditorPage() {
             title="9:16 Vertical (Instagram Reels, TikTok, YouTube Shorts)"
           >
             <Smartphone className="w-3.5 h-3.5" />
-            <span>9:16</span>
+            <span className="hidden xs:inline">9:16</span>
           </button>
 
           <button
@@ -614,7 +615,7 @@ export function EditorPage() {
               setCaptionStyle({ aspectRatio: '16:9' });
             }}
             className={cn(
-              'px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer',
+              'px-1.5 sm:px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer',
               aspectRatio === '16:9'
                 ? 'bg-[#16A34A] text-white shadow-xs'
                 : 'text-[#2F3020]/70 hover:text-[#2F3020] hover:bg-black/5'
@@ -622,7 +623,7 @@ export function EditorPage() {
             title="16:9 Widescreen (YouTube, Landscape Video)"
           >
             <Monitor className="w-3.5 h-3.5" />
-            <span>16:9</span>
+            <span className="hidden xs:inline">16:9</span>
           </button>
 
           <button
@@ -631,7 +632,7 @@ export function EditorPage() {
               setCaptionStyle({ aspectRatio: '1:1' });
             }}
             className={cn(
-              'px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer',
+              'px-1.5 sm:px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer',
               aspectRatio === '1:1'
                 ? 'bg-[#16A34A] text-white shadow-xs'
                 : 'text-[#2F3020]/70 hover:text-[#2F3020] hover:bg-black/5'
@@ -639,17 +640,17 @@ export function EditorPage() {
             title="1:1 Square (Instagram Posts, Feed)"
           >
             <Square className="w-3.5 h-3.5" />
-            <span>1:1</span>
+            <span className="hidden xs:inline">1:1</span>
           </button>
         </div>
 
         {/* Right: Safe Zone Toggle & Primary Export Button */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-1.5 sm:gap-2.5">
           {/* Safe Zone Boundary Guide */}
           <button
             onClick={() => setSafeZone(!safeZone)}
             className={cn(
-              "px-2.5 py-1.5 rounded-lg transition-all text-xs font-semibold flex items-center gap-1.5 cursor-pointer border",
+              "p-1.5 sm:px-2.5 sm:py-1.5 rounded-lg transition-all text-xs font-semibold flex items-center gap-1.5 cursor-pointer border",
               safeZone
                 ? "bg-[#16A34A] text-white border-[#16A34A] shadow-xs"
                 : "bg-[#FAF7F5] text-[#2F3020]/80 border-[#2F3020]/15 hover:text-[#2F3020]"
@@ -657,24 +658,25 @@ export function EditorPage() {
             title="Toggle TikTok / Instagram Reels Safe Zone"
           >
             <Shield className="w-3.5 h-3.5" />
-            <span className="hidden md:inline text-[11px]">Safe Zone</span>
+            <span className="hidden lg:inline text-[11px]">Safe Zone</span>
           </button>
 
           {/* Primary Export Action */}
           <button
             onClick={() => setExportModalOpen(true)}
-            className="flex items-center gap-2 px-3.5 py-1.5 bg-[#16A34A] hover:bg-[#15803D] active:scale-95 text-white text-xs font-bold rounded-xl shadow-sm transition-all cursor-pointer"
+            className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-1.5 bg-[#16A34A] hover:bg-[#15803D] active:scale-95 text-white text-xs font-bold rounded-xl shadow-sm transition-all cursor-pointer flex-shrink-0"
             id="export-video-btn"
           >
             <Download className="w-3.5 h-3.5 stroke-[2.5]" />
-            <span>Export Video</span>
+            <span className="hidden xs:inline">Export Video</span>
+            <span className="xs:hidden">Export</span>
           </button>
 
           {/* User Profile Pill in Editor Top Bar */}
           {user && (
             <button
               onClick={() => navigate('/dashboard')}
-              className="flex items-center gap-2 px-2.5 py-1 bg-[#FAF7F5] hover:bg-white border border-[#2F3020]/20 rounded-xl cursor-pointer shadow-2xs transition-all text-left group ml-1"
+              className="hidden lg:flex items-center gap-2 px-2.5 py-1 bg-[#FAF7F5] hover:bg-white border border-[#2F3020]/20 rounded-xl cursor-pointer shadow-2xs transition-all text-left group ml-1"
               title="Return to Dashboard & Profile Settings"
             >
               <div className="w-6 h-6 rounded-full p-0.5 bg-gradient-to-tr from-[#16A34A]/50 to-emerald-300 flex-shrink-0 shadow-xs">
@@ -686,7 +688,7 @@ export function EditorPage() {
                   </div>
                 )}
               </div>
-              <span className="text-[11px] font-bold text-[#2F3020] truncate max-w-[110px] hidden md:inline">
+              <span className="text-[11px] font-bold text-[#2F3020] truncate max-w-[110px]">
                 {user.user_metadata?.full_name || (user.email ? user.email.split('@')[0] : 'User')}
               </span>
               <span className="text-[8.5px] font-extrabold text-[#16A34A] bg-[#16A34A]/10 border border-[#16A34A]/30 px-1.5 py-0.5 rounded-full">
@@ -697,10 +699,67 @@ export function EditorPage() {
         </div>
       </header>
 
+      {/* Mobile / Tablet View Switcher Tab Bar */}
+      <div className="lg:hidden flex items-center justify-between px-2 sm:px-4 py-1.5 bg-[#CDCBD6] border-b border-[#2F3020]/20 flex-shrink-0 z-10">
+        <div className="flex bg-[#FAF7F5] p-0.5 rounded-xl border border-[#2F3020]/15 w-full max-w-md mx-auto shadow-2xs gap-0.5 sm:gap-1">
+          <button
+            onClick={() => setMobileTab('preview')}
+            className={cn(
+              "flex-1 py-1 px-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer truncate",
+              mobileTab === 'preview'
+                ? "bg-[#16A34A] text-white shadow-xs"
+                : "text-[#2F3020]/75 hover:text-[#2F3020]"
+            )}
+          >
+            <Film className="w-3.5 h-3.5 flex-shrink-0" />
+            <span>Preview</span>
+          </button>
+          <button
+            onClick={() => { setMobileTab('presets'); setStudioTab('presets'); }}
+            className={cn(
+              "flex-1 py-1 px-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer truncate",
+              mobileTab === 'presets'
+                ? "bg-[#16A34A] text-white shadow-xs"
+                : "text-[#2F3020]/75 hover:text-[#2F3020]"
+            )}
+          >
+            <Sparkles className="w-3.5 h-3.5 flex-shrink-0" />
+            <span>Presets</span>
+          </button>
+          <button
+            onClick={() => { setMobileTab('transcript'); setStudioTab('transcript'); }}
+            className={cn(
+              "flex-1 py-1 px-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer truncate",
+              mobileTab === 'transcript'
+                ? "bg-[#16A34A] text-white shadow-xs"
+                : "text-[#2F3020]/75 hover:text-[#2F3020]"
+            )}
+          >
+            <Type className="w-3.5 h-3.5 flex-shrink-0" />
+            <span>Captions</span>
+          </button>
+          <button
+            onClick={() => { setMobileTab('style'); setStudioTab('style'); }}
+            className={cn(
+              "flex-1 py-1 px-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer truncate",
+              mobileTab === 'style'
+                ? "bg-[#16A34A] text-white shadow-xs"
+                : "text-[#2F3020]/75 hover:text-[#2F3020]"
+            )}
+          >
+            <Sliders className="w-3.5 h-3.5 flex-shrink-0" />
+            <span>Style</span>
+          </button>
+        </div>
+      </div>
+
       {/* ── 2. Main Studio Workspace: Center Video Player + Right Caption & Preset Studio ── */}
       <div className="flex-1 flex overflow-hidden min-h-0">
         {/* Center: Video Player Canvas (Terracotta Studio Background) */}
-        <main className="flex-1 bg-[#D96846] relative flex flex-col items-center justify-center p-3 overflow-hidden min-w-0 min-h-0">
+        <main className={cn(
+          "flex-1 bg-[#D96846] relative flex flex-col items-center justify-center p-2 sm:p-3 overflow-hidden min-w-0 min-h-0",
+          mobileTab !== 'preview' ? "hidden lg:flex" : "flex"
+        )}>
           {/* Subtle dotted organic studio grid */}
           <div
             className="absolute inset-0 opacity-15 pointer-events-none"
@@ -798,14 +857,18 @@ export function EditorPage() {
             document.body.style.cursor = 'col-resize';
             document.body.style.userSelect = 'none';
           }}
-          className="w-1 hover:w-1.5 bg-[#2F3020]/15 hover:bg-[#16A34A] active:bg-[#16A34A] cursor-col-resize transition-all flex-shrink-0 z-20 border-l border-[#2F3020]/10"
+          className="hidden lg:block w-1 hover:w-1.5 bg-[#2F3020]/15 hover:bg-[#16A34A] active:bg-[#16A34A] cursor-col-resize transition-all flex-shrink-0 z-20 border-l border-[#2F3020]/10"
           title="Drag to resize studio panel"
         />
 
         {/* Right: Dedicated Caption & Presets Command Center in Lavender Neutral */}
         <aside
-          style={{ width: `${rightPanelWidth}px` }}
-          className="flex-shrink-0 bg-[#CDCBD6] border-l border-[#2F3020]/20 flex flex-col overflow-hidden text-[#2F3020]"
+          style={{ '--panel-w': `${rightPanelWidth}px` } as React.CSSProperties}
+          className={cn(
+            "bg-[#CDCBD6] border-l border-[#2F3020]/20 flex flex-col overflow-hidden text-[#2F3020] flex-shrink-0",
+            mobileTab === 'preview' ? "hidden lg:flex" : "flex flex-1 lg:flex-none",
+            "w-full lg:w-[var(--panel-w,380px)]"
+          )}
         >
           {/* Top 3-Way Tabs: Presets | Captions | Customize */}
           <div className="p-2.5 border-b border-[#2F3020]/15 bg-[#CDCBD6] flex-shrink-0">
@@ -892,7 +955,10 @@ export function EditorPage() {
       {/* ── 3. Bottom Multi-Track Subtitle Timeline in Lavender Neutral ── */}
       <div
         style={{ height: `${timelineHeight}px` }}
-        className="flex-shrink-0 flex flex-col relative bg-[#CDCBD6] border-t border-[#2F3020]/25 shadow-lg select-none text-[#2F3020] overflow-hidden"
+        className={cn(
+          "flex-shrink-0 flex flex-col relative bg-[#CDCBD6] border-t border-[#2F3020]/25 shadow-lg select-none text-[#2F3020] overflow-hidden",
+          mobileTab !== 'preview' && "hidden lg:flex"
+        )}
       >
         {/* Resize handle */}
         <div

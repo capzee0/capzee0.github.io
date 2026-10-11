@@ -86,19 +86,19 @@ export function SocialCaptionsPage() {
   return (
     <div className="h-full flex flex-col bg-[#D96846] text-[#2F3020]">
       {/* Header */}
-      <div className="flex items-center gap-3 px-6 py-5 border-b border-[#2F3020]/15 bg-[#D96846]">
-        <button onClick={() => navigate(-1)} className="p-2 rounded hover:bg-[#2F3020]/10 text-[#2F3020]">
+      <div className="flex items-center gap-3 px-4 sm:px-6 py-3.5 sm:py-5 border-b border-[#2F3020]/15 bg-[#D96846]">
+        <button onClick={() => navigate(-1)} className="p-1.5 sm:p-2 rounded hover:bg-[#2F3020]/10 text-[#2F3020] cursor-pointer">
           <ChevronLeft className="w-4 h-4" />
         </button>
         <div>
-          <h1 className="text-2xl font-black text-[#2F3020] tracking-tight">Social Captions</h1>
-          <p className="text-xs text-[#2F3020]/80 mt-0.5 font-medium">Generate viral hooks and hashtags · Capzee Studio</p>
+          <h1 className="text-xl sm:text-2xl font-black text-[#2F3020] tracking-tight">Social Captions</h1>
+          <p className="text-[11px] sm:text-xs text-[#2F3020]/80 mt-0.5 font-medium">Generate viral hooks and hashtags · Capzee Studio</p>
         </div>
       </div>
 
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0">
         {/* Settings sidebar in Lavender */}
-        <div className="w-[280px] flex-shrink-0 border-r border-[#2F3020]/15 bg-[#CDCBD6] overflow-auto p-4 space-y-5 text-[#2F3020]">
+        <div className="w-full md:w-[280px] lg:w-[320px] flex-shrink-0 border-b md:border-b-0 md:border-r border-[#2F3020]/15 bg-[#CDCBD6] overflow-y-auto p-3.5 sm:p-4 space-y-4 sm:space-y-5 text-[#2F3020] max-h-[42vh] md:max-h-none">
           {/* No transcript warning */}
           {!currentTranscript && (
             <div className="flex items-start gap-2 p-3 rounded-lg bg-[#FAF7F5] border border-amber-600/30 text-amber-800 text-xs font-semibold shadow-sm">

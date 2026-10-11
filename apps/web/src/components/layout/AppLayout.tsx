@@ -132,18 +132,18 @@ export function AppLayout() {
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#D96846] font-sans select-none text-[#2F3020]">
       {/* Top Navbar — Terracotta Orange */}
-      <header className="h-13 sm:h-14 flex-shrink-0 bg-[#D96846] border-b border-[#2F3020]/20 px-4 sm:px-6 flex items-center justify-between z-20 shadow-xs">
+      <header className="h-13 sm:h-14 flex-shrink-0 bg-[#D96846] border-b border-[#2F3020]/20 px-3 sm:px-6 flex items-center justify-between z-20 shadow-xs">
         <div className="flex items-center gap-3">
           <Link to="/dashboard" className="flex items-center group" title="Capzee Dashboard">
             <img
               src="/capzee-wordmark.png"
               alt="Capzee"
-              className="h-8 sm:h-8.5 w-auto object-contain transition-transform duration-200 group-hover:scale-105 drop-shadow-xs"
+              className="h-7 sm:h-8.5 w-auto object-contain transition-transform duration-200 group-hover:scale-105 drop-shadow-xs"
             />
           </Link>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <div
             className="hidden sm:flex items-center gap-1.5 text-[11px] font-bold text-[#2F3020] bg-[#CDCBD6] px-2.5 py-1 rounded-md border border-[#2F3020]/20 shadow-2xs"
             title="Capzee Cloud AI Engine Active"
@@ -160,13 +160,13 @@ export function AppLayout() {
                 setProfileOpen(true);
                 setActiveSection("plan");
               }}
-              className="flex items-center gap-2.5 px-3 py-1.5 bg-[#C85A3A] hover:bg-[#B84E30] border border-white/30 rounded-xl cursor-pointer shadow-xs hover:shadow-md transition-all group select-none text-left"
+              className="flex items-center gap-1.5 sm:gap-2.5 px-2 sm:px-3 py-1 sm:py-1.5 bg-[#C85A3A] hover:bg-[#B84E30] border border-white/30 rounded-xl cursor-pointer shadow-xs hover:shadow-md transition-all group select-none text-left"
               aria-label="Open profile settings"
               id="user-profile-menu-btn"
               title="Click to view Account & Plan Settings"
             >
               {/* Avatar Circle with Gradient Ring */}
-              <div className="w-8 h-8 rounded-full p-0.5 bg-gradient-to-tr from-white/60 to-white/20 flex-shrink-0 shadow-xs">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full p-0.5 bg-gradient-to-tr from-white/60 to-white/20 flex-shrink-0 shadow-xs">
                 {avatarUrl ? (
                   <img
                     src={avatarUrl}
@@ -181,17 +181,17 @@ export function AppLayout() {
               </div>
 
               {/* User Name & Email */}
-              <div className="min-w-0 max-w-[130px] sm:max-w-[180px] md:max-w-[220px]">
-                <p className="text-[12px] font-black text-white leading-tight truncate group-hover:text-amber-100 transition-colors">
+              <div className="min-w-0 max-w-[90px] xs:max-w-[120px] sm:max-w-[180px] md:max-w-[220px]">
+                <p className="text-[11px] sm:text-[12px] font-black text-white leading-tight truncate group-hover:text-amber-100 transition-colors">
                   {userName}
                 </p>
-                <p className="text-[9.5px] text-white/80 truncate mt-0.5 font-medium leading-tight">
+                <p className="text-[9px] sm:text-[9.5px] text-white/80 truncate mt-0.5 font-medium leading-tight hidden xs:block">
                   {userEmail}
                 </p>
               </div>
 
               {/* Free Plan Badge */}
-              <span className="text-[8.5px] font-extrabold text-white bg-black/20 border border-white/30 px-2 py-0.5 rounded-full flex-shrink-0 shadow-2xs">
+              <span className="text-[8px] sm:text-[8.5px] font-extrabold text-white bg-black/20 border border-white/30 px-1.5 sm:px-2 py-0.5 rounded-full flex-shrink-0 shadow-2xs">
                 Free
               </span>
             </button>
@@ -215,7 +215,7 @@ export function AppLayout() {
       {/* Profile Modal — backdrop blur + centered */}
       {profileOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center"
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4"
           style={{
             backdropFilter: "blur(10px)",
             WebkitBackdropFilter: "blur(10px)",
@@ -226,16 +226,15 @@ export function AppLayout() {
           }}
         >
           <div
-            className="relative bg-[#D96846] rounded-2xl shadow-2xl border-2 border-[#2F3020]/25 flex overflow-hidden"
-            style={{ width: 610, maxHeight: "85vh" }}
+            className="relative bg-[#D96846] rounded-2xl shadow-2xl border-2 border-[#2F3020]/25 flex flex-col sm:flex-row overflow-hidden w-full max-w-[610px] max-h-[90vh]"
             onMouseDown={(e) => e.stopPropagation()}
           >
             {/* Left panel */}
-            <div className="w-52 flex-shrink-0 bg-[#C85A3A] border-r border-[#2F3020]/20 flex flex-col">
+            <div className="w-full sm:w-52 flex-shrink-0 bg-[#C85A3A] border-b sm:border-b-0 sm:border-r border-[#2F3020]/20 flex flex-col">
               {/* User header */}
-              <div className="px-3.5 pt-4 pb-3.5 border-b border-[#2F3020]/20">
+              <div className="px-3.5 py-2.5 sm:pt-4 sm:pb-3.5 border-b border-[#2F3020]/20">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-full p-0.5 bg-gradient-to-tr from-white/60 to-white/20 flex-shrink-0 shadow-xs">
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full p-0.5 bg-gradient-to-tr from-white/60 to-white/20 flex-shrink-0 shadow-xs">
                     {avatarUrl ? (
                       <img
                         src={avatarUrl}
@@ -260,64 +259,64 @@ export function AppLayout() {
                 </div>
               </div>
 
-              {/* Nav */}
-              <nav className="flex-1 px-2 py-2.5 space-y-0.5 overflow-y-auto">
+              {/* Nav (scrollable horizontally on mobile, vertically on desktop) */}
+              <nav className="flex sm:flex-col overflow-x-auto sm:overflow-y-auto px-2 py-2 sm:py-2.5 gap-1 sm:space-y-0.5 scrollbar-none [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 {profileNavItems.map(({ id, label, icon: Icon }) => (
                   <button
                     key={id}
                     onClick={() => setActiveSection(id)}
                     className={cn(
-                      "w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[12px] font-semibold transition-all text-left",
+                      "flex-shrink-0 sm:w-full flex items-center gap-1.5 sm:gap-2 px-2.5 py-1.5 rounded-lg text-[11px] sm:text-[12px] font-semibold transition-all text-left whitespace-nowrap",
                       activeSection === id
                         ? "bg-[#2F3020] text-white shadow-sm font-bold"
                         : "text-white/85 hover:bg-white/15 hover:text-white"
                     )}
                   >
                     <Icon className="w-3.5 h-3.5 flex-shrink-0" />
-                    {label}
+                    <span>{label}</span>
                   </button>
                 ))}
               </nav>
 
-              {/* Bottom */}
-              <div className="px-2 pb-2.5 space-y-0.5 border-t border-[#2F3020]/20 pt-2">
+              {/* Bottom controls */}
+              <div className="flex sm:flex-col items-center justify-between sm:justify-start px-2 py-1.5 sm:pb-2.5 sm:space-y-0.5 border-t border-[#2F3020]/20 sm:pt-2">
                 <Link
                   to="/dashboard"
                   onClick={() => setProfileOpen(false)}
-                  className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[12px] font-semibold text-white/85 hover:bg-white/15 hover:text-white transition-all"
+                  className="flex items-center gap-1.5 sm:gap-2 px-2.5 py-1.5 rounded-lg text-[11px] sm:text-[12px] font-semibold text-white/85 hover:bg-white/15 hover:text-white transition-all"
                 >
                   <LayoutDashboard className="w-3.5 h-3.5 flex-shrink-0" />
-                  Projects
+                  <span>Projects</span>
                 </Link>
                 <button
                   onClick={() => {
                     setProfileOpen(false);
                     signOut();
                   }}
-                  className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[12px] font-semibold text-red-200 hover:bg-red-500/20 hover:text-white transition-all text-left cursor-pointer"
+                  className="flex items-center gap-1.5 sm:gap-2 px-2.5 py-1.5 rounded-lg text-[11px] sm:text-[12px] font-semibold text-red-200 hover:bg-red-500/20 hover:text-white transition-all text-left cursor-pointer"
                 >
                   <LogOut className="w-3.5 h-3.5 flex-shrink-0" />
-                  Log out
+                  <span>Log out</span>
                 </button>
               </div>
             </div>
 
             {/* Right panel */}
-            <div className="flex-1 flex flex-col min-w-0 bg-[#D96846]">
-              <div className="flex items-center justify-between px-5 py-3 border-b border-[#2F3020]/20 bg-[#C85A3A]/40">
+            <div className="flex-1 flex flex-col min-w-0 bg-[#D96846] max-h-[60vh] sm:max-h-none overflow-hidden">
+              <div className="flex items-center justify-between px-4 sm:px-5 py-2.5 sm:py-3 border-b border-[#2F3020]/20 bg-[#C85A3A]/40">
                 <h2 className="text-[13px] font-black text-white tracking-wide">
                   {profileNavItems.find((n) => n.id === activeSection)?.label ?? "Account"}
                 </h2>
                 <button
                   onClick={() => setProfileOpen(false)}
-                  className="w-6 h-6 rounded-full flex items-center justify-center bg-black/10 hover:bg-black/25 text-white/90 hover:text-white transition-colors"
+                  className="w-6 h-6 rounded-full flex items-center justify-center bg-black/10 hover:bg-black/25 text-white/90 hover:text-white transition-colors cursor-pointer"
                   aria-label="Close profile"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto px-5 py-3.5">
+              <div className="flex-1 overflow-y-auto px-4 sm:px-5 py-3 sm:py-3.5">
                 {activeSection === "plan"     && <PlanContent />}
                 {activeSection === "usage"    && <ComingSoonContent label="Usage" />}
                 {activeSection === "devices"  && <ComingSoonContent label="Devices / Sessions" />}

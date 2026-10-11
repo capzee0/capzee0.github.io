@@ -168,6 +168,27 @@ export function FluxoCutTimeline({
     window.addEventListener('mouseup', onMouseUp);
   };
 
+  const handleTouchStartTimeline = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (e.touches.length === 0) return;
+    isScrubbingRef.current = true;
+    seekFromClientX(e.touches[0].clientX);
+
+    const onTouchMove = (ev: TouchEvent) => {
+      if (isScrubbingRef.current && ev.touches.length > 0) {
+        seekFromClientX(ev.touches[0].clientX);
+      }
+    };
+
+    const onTouchEnd = () => {
+      isScrubbingRef.current = false;
+      window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('touchend', onTouchEnd);
+    };
+
+    window.addEventListener('touchmove', onTouchMove, { passive: true });
+    window.addEventListener('touchend', onTouchEnd);
+  };
+
   const handleTrimStart = (e: React.MouseEvent, seg: Segment) => {
     e.stopPropagation();
     if (!timelineRef.current || !onUpdateSegmentTime) return;
@@ -237,15 +258,15 @@ export function FluxoCutTimeline({
     return (
     <div className="h-full w-full bg-[#CDCBD6] select-none flex flex-col font-sans text-[#2F3020] overflow-hidden">
       {/* ── Top Bar: Timeline Editing Tools & Track Zoom ── */}
-      <div className="flex items-center justify-between px-3 py-1.5 border-b border-[#2F3020]/15 bg-[#FAF7F5] flex-shrink-0">
+      <div className="flex items-center justify-between px-2 sm:px-3 py-1 sm:py-1.5 border-b border-[#2F3020]/15 bg-[#FAF7F5] flex-shrink-0 gap-1 overflow-x-auto scrollbar-none [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {/* Left: History, Split, Playback Pill, Delete */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
           {/* Quick Edit Actions: Undo / Redo */}
           <div className="flex items-center gap-0.5">
             <button
               onClick={onUndo}
               disabled={!canUndo}
-              className={`p-1.5 rounded transition-colors ${canUndo ? 'hover:text-[#16A34A] text-[#2F3020]/80 cursor-pointer hover:bg-[#CDCBD6]/50' : 'text-[#2F3020]/30 cursor-not-allowed'}`}
+              className={`p-1 sm:p-1.5 rounded transition-colors ${canUndo ? 'hover:text-[#16A34A] text-[#2F3020]/80 cursor-pointer hover:bg-[#CDCBD6]/50' : 'text-[#2F3020]/30 cursor-not-allowed'}`}
               title="Undo (Ctrl+Z)"
             >
               <Undo2 className="w-3.5 h-3.5" />
@@ -253,7 +274,7 @@ export function FluxoCutTimeline({
             <button
               onClick={onRedo}
               disabled={!canRedo}
-              className={`p-1.5 rounded transition-colors ${canRedo ? 'hover:text-[#16A34A] text-[#2F3020]/80 cursor-pointer hover:bg-[#CDCBD6]/50' : 'text-[#2F3020]/30 cursor-not-allowed'}`}
+              className={`p-1 sm:p-1.5 rounded transition-colors ${canRedo ? 'hover:text-[#16A34A] text-[#2F3020]/80 cursor-pointer hover:bg-[#CDCBD6]/50' : 'text-[#2F3020]/30 cursor-not-allowed'}`}
               title="Redo (Ctrl+Y)"
             >
               <Redo2 className="w-3.5 h-3.5" />
@@ -265,17 +286,17 @@ export function FluxoCutTimeline({
           {/* Split button */}
           <button
             onClick={onSplit}
-            className="flex items-center gap-1 px-2 py-1 text-xs text-[#2F3020]/80 hover:text-[#16A34A] hover:bg-[#CDCBD6]/50 rounded font-semibold transition-colors cursor-pointer"
+            className="flex items-center gap-1 px-1.5 sm:px-2 py-1 text-xs text-[#2F3020]/80 hover:text-[#16A34A] hover:bg-[#CDCBD6]/50 rounded font-semibold transition-colors cursor-pointer"
             title="Split Segment at Current Time (S)"
           >
             <Scissors className="w-3.5 h-3.5" />
-            <span className="text-[10px]">Split</span>
+            <span className="text-[10px] hidden xs:inline">Split</span>
           </button>
 
           <div className="h-3.5 w-px bg-[#2F3020]/15 mx-0.5" />
 
-          {/* ── Playback Controls Pill (Implemented directly between Split & Delete) ── */}
-          <div className="flex items-center gap-1 px-2 py-0.5 bg-white border border-[#2F3020]/20 rounded-full shadow-2xs">
+          {/* ── Playback Controls Pill ── */}
+          <div className="flex items-center gap-0.5 sm:gap-1 px-1.5 sm:px-2 py-0.5 bg-white border border-[#2F3020]/20 rounded-full shadow-2xs">
             {/* Skip Back -1s */}
             <button
               onClick={onSkipBack ? onSkipBack : () => onSeek(Math.max(0, currentTime - 1))}
@@ -288,7 +309,7 @@ export function FluxoCutTimeline({
             {/* Play / Pause Toggle */}
             <button
               onClick={onTogglePlay}
-              className="w-6 h-6 rounded-full bg-[#16A34A] text-white hover:bg-[#15803D] flex items-center justify-center transition-all cursor-pointer shadow-2xs hover:scale-105 active:scale-95"
+              className="w-5.5 h-5.5 sm:w-6 sm:h-6 rounded-full bg-[#16A34A] text-white hover:bg-[#15803D] flex items-center justify-center transition-all cursor-pointer shadow-2xs hover:scale-105 active:scale-95 flex-shrink-0"
               title={playing ? 'Pause (Space)' : 'Play (Space)'}
             >
               {playing ? (
@@ -310,7 +331,7 @@ export function FluxoCutTimeline({
             <div className="h-3 w-px bg-[#2F3020]/15 mx-0.5" />
 
             {/* Monospace Digital Timecode */}
-            <div className="flex items-center gap-1 font-mono text-[10px] font-bold px-1 select-none">
+            <div className="flex items-center gap-1 font-mono text-[9px] sm:text-[10px] font-bold px-0.5 sm:px-1 select-none">
               <span className="text-[#16A34A] tracking-wider">{formatTimecode(currentTime)}</span>
               <span className="text-[#2F3020]/40">/</span>
               <span className="text-[#2F3020]/70">{formatTimecode(safeDuration)}</span>
@@ -322,16 +343,16 @@ export function FluxoCutTimeline({
           {/* Delete button */}
           <button
             onClick={onDelete}
-            className="flex items-center gap-1 px-2 py-1 text-xs text-[#2F3020]/80 hover:text-rose-600 hover:bg-rose-100 rounded font-semibold transition-colors cursor-pointer"
+            className="flex items-center gap-1 px-1.5 sm:px-2 py-1 text-xs text-[#2F3020]/80 hover:text-rose-600 hover:bg-rose-100 rounded font-semibold transition-colors cursor-pointer"
             title="Delete Active Segment (Del)"
           >
             <Trash2 className="w-3.5 h-3.5" />
-            <span className="text-[10px]">Delete</span>
+            <span className="text-[10px] hidden xs:inline">Delete</span>
           </button>
         </div>
 
         {/* Right: Timeline Zoom & Shortcuts */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-1 sm:gap-2.5 flex-shrink-0">
           {/* Shortcuts hint */}
           <div className="hidden lg:flex items-center gap-2 text-[9px] font-mono text-[#2F3020]/60">
             <span><kbd className="text-[#16A34A] bg-white border border-[#2F3020]/15 px-1 py-0.5 rounded font-bold shadow-2xs">S</kbd> Split</span>
@@ -342,7 +363,7 @@ export function FluxoCutTimeline({
           <div className="h-3.5 w-px bg-[#2F3020]/15 hidden lg:block" />
 
           {/* Timeline Zoom Slider */}
-          <div className="flex items-center gap-1 text-[#2F3020]/70">
+          <div className="hidden sm:flex items-center gap-1 text-[#2F3020]/70">
             <button
               onClick={() => setZoom((z) => Math.max(1, +(z - 0.2).toFixed(1)))}
               className="p-0.5 hover:text-[#16A34A] cursor-pointer"
@@ -357,7 +378,7 @@ export function FluxoCutTimeline({
               step={0.1}
               value={zoom}
               onChange={(e) => setZoom(parseFloat(e.target.value))}
-              className="w-16 h-1 bg-[#2F3020]/20 accent-[#16A34A] rounded cursor-pointer"
+              className="w-12 sm:w-16 h-1 bg-[#2F3020]/20 accent-[#16A34A] rounded cursor-pointer"
             />
             <button
               onClick={() => setZoom((z) => Math.min(3, +(z + 0.2).toFixed(1)))}
@@ -380,34 +401,34 @@ export function FluxoCutTimeline({
       {/* ── Multi-Track Area With Dedicated Left Header Gutter ── */}
       <div className="flex-1 flex min-h-0 bg-[#FAF7F5] overflow-hidden border-t border-[#2F3020]/15">
         {/* Left Track Headers (Fixed Gutter - avoids overlapping clips at 00:00) */}
-        <div className="w-20 sm:w-24 border-r border-[#2F3020]/15 bg-[#FAF7F5] flex flex-col flex-shrink-0 z-20 select-none">
+        <div className="w-16 sm:w-20 md:w-24 border-r border-[#2F3020]/15 bg-[#FAF7F5] flex flex-col flex-shrink-0 z-20 select-none">
           {/* Ruler header */}
-          <div className="h-6 border-b border-[#2F3020]/20 flex items-center justify-center px-2 bg-[#CDCBD6]/50">
-            <span className="text-[9px] font-mono font-bold tracking-wider text-[#2F3020]/60 uppercase flex items-center gap-1">
+          <div className="h-6 border-b border-[#2F3020]/20 flex items-center justify-center px-1 sm:px-2 bg-[#CDCBD6]/50">
+            <span className="text-[8px] sm:text-[9px] font-mono font-bold tracking-wider text-[#2F3020]/60 uppercase flex items-center gap-0.5 sm:gap-1">
               <Clock className="w-2.5 h-2.5 text-[#2F3020]/60" />
-              TIME
+              <span>TIME</span>
             </span>
           </div>
 
           {/* Track 1 Header (Subtitles) */}
-          <div className="h-12 border-b border-[#2F3020]/15 flex items-center px-2.5 gap-2 bg-[#FAF7F5]">
-            <div className="w-5 h-5 rounded bg-[#16A34A]/10 border border-[#16A34A]/30 flex items-center justify-center flex-shrink-0 shadow-2xs">
+          <div className="h-12 border-b border-[#2F3020]/15 flex items-center px-1.5 sm:px-2.5 gap-1.5 sm:gap-2 bg-[#FAF7F5]">
+            <div className="w-4.5 h-4.5 sm:w-5 sm:h-5 rounded bg-[#16A34A]/10 border border-[#16A34A]/30 flex items-center justify-center flex-shrink-0 shadow-2xs">
               <Type className="w-3 h-3 text-[#16A34A]" />
             </div>
             <div className="min-w-0">
-              <div className="text-[10px] font-extrabold text-[#2F3020] leading-tight">Subtitles</div>
-              <div className="text-[8px] font-mono text-[#2F3020]/50 font-semibold tracking-wider">T1 TRACK</div>
+              <div className="text-[9px] sm:text-[10px] font-extrabold text-[#2F3020] leading-tight truncate">Subtitles</div>
+              <div className="text-[7.5px] sm:text-[8px] font-mono text-[#2F3020]/50 font-semibold tracking-wider hidden xs:block">T1 TRACK</div>
             </div>
           </div>
 
           {/* Track 2 Header (Audio) */}
-          <div className="h-10 border-b border-[#2F3020]/15 flex items-center px-2.5 gap-2 bg-[#FAF7F5]">
-            <div className="w-5 h-5 rounded bg-[#16A34A]/10 border border-[#16A34A]/30 flex items-center justify-center flex-shrink-0 shadow-2xs">
+          <div className="h-10 border-b border-[#2F3020]/15 flex items-center px-1.5 sm:px-2.5 gap-1.5 sm:gap-2 bg-[#FAF7F5]">
+            <div className="w-4.5 h-4.5 sm:w-5 sm:h-5 rounded bg-[#16A34A]/10 border border-[#16A34A]/30 flex items-center justify-center flex-shrink-0 shadow-2xs">
               <Volume2 className="w-3 h-3 text-[#16A34A]" />
             </div>
             <div className="min-w-0">
-              <div className="text-[10px] font-extrabold text-[#2F3020] leading-tight">Audio</div>
-              <div className="text-[8px] font-mono text-[#2F3020]/50 font-semibold tracking-wider">A1 • 48kHz</div>
+              <div className="text-[9px] sm:text-[10px] font-extrabold text-[#2F3020] leading-tight truncate">Audio</div>
+              <div className="text-[7.5px] sm:text-[8px] font-mono text-[#2F3020]/50 font-semibold tracking-wider hidden xs:block">A1 TRACK</div>
             </div>
           </div>
         </div>
@@ -416,6 +437,7 @@ export function FluxoCutTimeline({
         <div
           ref={timelineRef}
           onMouseDown={handleMouseDownTimeline}
+          onTouchStart={handleTouchStartTimeline}
           className={`relative flex-1 bg-[#FAF7F5] cursor-pointer select-none overflow-y-hidden scrollbar-none [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
             zoom > 1 ? 'overflow-x-auto' : 'overflow-x-hidden'
           }`}
@@ -427,6 +449,7 @@ export function FluxoCutTimeline({
             {/* Time Ruler (Directly draggable scrubbing surface) */}
             <div
               onMouseDown={handleMouseDownTimeline}
+              onTouchStart={handleTouchStartTimeline}
               className="h-6 border-b border-[#2F3020]/20 relative flex items-center px-2 text-[9.5px] font-mono text-[#2F3020]/75 bg-[#CDCBD6]/40 cursor-ew-resize select-none flex-shrink-0"
               title="Click or drag anywhere on ruler to seek playhead"
             >

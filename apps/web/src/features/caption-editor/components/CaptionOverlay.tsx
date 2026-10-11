@@ -28,7 +28,6 @@ export function CaptionOverlay({ segment, activeWordIndex, style, onPositionChan
 
     const onMouseMove = (ev: MouseEvent) => {
       const deltaY = ev.clientY - startY;
-      // Convert pixel delta to percentage of typical container height (~400-600px)
       const percentDelta = Math.round((deltaY / 400) * 100);
       const newOffset = Math.max(-40, Math.min(40, initialOffset - percentDelta));
       onPositionChange(newOffset);
@@ -41,6 +40,28 @@ export function CaptionOverlay({ segment, activeWordIndex, style, onPositionChan
 
     window.addEventListener('mousemove', onMouseMove);
     window.addEventListener('mouseup', onMouseUp);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (!onPositionChange || e.touches.length === 0) return;
+    const startY = e.touches[0].clientY;
+    const initialOffset = offsetY;
+
+    const onTouchMove = (ev: TouchEvent) => {
+      if (ev.touches.length === 0) return;
+      const deltaY = ev.touches[0].clientY - startY;
+      const percentDelta = Math.round((deltaY / 400) * 100);
+      const newOffset = Math.max(-40, Math.min(40, initialOffset - percentDelta));
+      onPositionChange(newOffset);
+    };
+
+    const onTouchEnd = () => {
+      window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('touchend', onTouchEnd);
+    };
+
+    window.addEventListener('touchmove', onTouchMove, { passive: true });
+    window.addEventListener('touchend', onTouchEnd);
   };
 
   const positionStyle: React.CSSProperties = {
@@ -387,6 +408,7 @@ export function CaptionOverlay({ segment, activeWordIndex, style, onPositionChan
     <div
       style={positionStyle}
       onMouseDown={handleMouseDown}
+      onTouchStart={handleTouchStart}
       className="group select-none cursor-move pointer-events-auto"
       title="Click and drag vertically to position subtitle"
     >
