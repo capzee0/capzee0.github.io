@@ -2,6 +2,7 @@
   "name": "@capzee/api",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "description": "Capzee REST API server",
   "main": "dist/server.js",
   "scripts": {

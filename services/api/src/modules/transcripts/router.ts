@@ -13,7 +13,11 @@ import { ValidatedTranscriptSchema, transliterateTranscript } from '@capzee/cont
 import { spawn } from 'child_process';
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import { config } from '../../config/index.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export const transcriptsRouter = Router({ mergeParams: true });
 
