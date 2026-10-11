@@ -2,7 +2,8 @@ import { useRef, useEffect, useState, useMemo } from 'react';
 import {
   ZoomIn, ZoomOut, Maximize2,
   Undo2, Redo2, Scissors, Trash2,
-  RotateCcw, RotateCw, Play, Pause
+  RotateCcw, RotateCw, Play, Pause,
+  Clock, Type, Volume2
 } from 'lucide-react';
 import type { Transcript, Segment } from '@capzee/contracts';
 
@@ -372,151 +373,174 @@ export function FluxoCutTimeline({
         </div>
       </div>
 
-      {/* ── Multi-Track Area (Full-Width T1 Subtitles & A1 Audio) ── */}
-      <div
-        ref={timelineRef}
-        onMouseDown={handleMouseDownTimeline}
-        className={`relative flex-1 bg-[#FAF7F5] cursor-pointer select-none overflow-y-hidden scrollbar-none [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
-          zoom > 1 ? 'overflow-x-auto' : 'overflow-x-hidden'
-        }`}
-      >
+      {/* ── Multi-Track Area With Dedicated Left Header Gutter ── */}
+      <div className="flex-1 flex min-h-0 bg-[#FAF7F5] overflow-hidden border-t border-[#2F3020]/15">
+        {/* Left Track Headers (Fixed Gutter - avoids overlapping clips at 00:00) */}
+        <div className="w-20 sm:w-24 border-r border-[#2F3020]/15 bg-[#FAF7F5] flex flex-col flex-shrink-0 z-20 select-none">
+          {/* Ruler header */}
+          <div className="h-6 border-b border-[#2F3020]/20 flex items-center justify-center px-2 bg-[#CDCBD6]/50">
+            <span className="text-[9px] font-mono font-bold tracking-wider text-[#2F3020]/60 uppercase flex items-center gap-1">
+              <Clock className="w-2.5 h-2.5 text-[#2F3020]/60" />
+              TIME
+            </span>
+          </div>
+
+          {/* Track 1 Header (Subtitles) */}
+          <div className="h-12 border-b border-[#2F3020]/15 flex items-center px-2.5 gap-2 bg-[#FAF7F5]">
+            <div className="w-5 h-5 rounded bg-[#16A34A]/10 border border-[#16A34A]/30 flex items-center justify-center flex-shrink-0 shadow-2xs">
+              <Type className="w-3 h-3 text-[#16A34A]" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-[10px] font-extrabold text-[#2F3020] leading-tight">Subtitles</div>
+              <div className="text-[8px] font-mono text-[#2F3020]/50 font-semibold tracking-wider">T1 TRACK</div>
+            </div>
+          </div>
+
+          {/* Track 2 Header (Audio) */}
+          <div className="h-10 border-b border-[#2F3020]/15 flex items-center px-2.5 gap-2 bg-[#FAF7F5]">
+            <div className="w-5 h-5 rounded bg-[#16A34A]/10 border border-[#16A34A]/30 flex items-center justify-center flex-shrink-0 shadow-2xs">
+              <Volume2 className="w-3 h-3 text-[#16A34A]" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-[10px] font-extrabold text-[#2F3020] leading-tight">Audio</div>
+              <div className="text-[8px] font-mono text-[#2F3020]/50 font-semibold tracking-wider">A1 • 48kHz</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Scrollable / Zoomable Tracks Area */}
         <div
-          style={{ width: zoom > 1 ? `${zoom * 100}%` : '100%' }}
-          className="relative w-full h-full flex flex-col overflow-hidden"
+          ref={timelineRef}
+          onMouseDown={handleMouseDownTimeline}
+          className={`relative flex-1 bg-[#FAF7F5] cursor-pointer select-none overflow-y-hidden scrollbar-none [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
+            zoom > 1 ? 'overflow-x-auto' : 'overflow-x-hidden'
+          }`}
         >
-          {/* Time Ruler (Directly draggable scrubbing surface) */}
           <div
-            onMouseDown={handleMouseDownTimeline}
-            className="h-6 border-b border-[#2F3020]/20 relative flex items-center px-2 text-[9.5px] font-mono text-[#2F3020]/75 bg-[#CDCBD6]/40 cursor-ew-resize select-none flex-shrink-0"
-            title="Click or drag anywhere on ruler to seek playhead"
+            style={{ width: zoom > 1 ? `${zoom * 100}%` : '100%' }}
+            className="relative w-full h-full flex flex-col overflow-hidden"
           >
-            {rulerTicks.map((tick) => (
-              <div
-                key={tick.time}
-                style={{ left: `${tick.percent}%` }}
-                className="absolute flex flex-col items-start transform -translate-x-1/2 pointer-events-none"
-              >
-                <span className="font-semibold">{tick.label}</span>
-                <div className="w-px h-1.5 bg-[#2F3020]/30 mt-0.5" />
-              </div>
-            ))}
-          </div>
-
-          {/* Track 1: Captions / Subtitles Layer (T1) */}
-          <div className="h-10 border-b border-[#2F3020]/15 relative bg-[#FAF7F5] flex items-center px-1.5 overflow-hidden flex-shrink-0">
-            {/* Subtle T1 badge */}
-            <div className="absolute top-1 left-2 z-10 pointer-events-none flex items-center gap-1 bg-[#2F3020]/80 backdrop-blur-xs px-1.5 py-0.5 rounded text-[8px] font-mono font-bold text-white shadow-2xs">
-              <span className="text-[#22C55E]">T1</span>
-              <span className="opacity-80">Subtitles</span>
+            {/* Time Ruler (Directly draggable scrubbing surface) */}
+            <div
+              onMouseDown={handleMouseDownTimeline}
+              className="h-6 border-b border-[#2F3020]/20 relative flex items-center px-2 text-[9.5px] font-mono text-[#2F3020]/75 bg-[#CDCBD6]/40 cursor-ew-resize select-none flex-shrink-0"
+              title="Click or drag anywhere on ruler to seek playhead"
+            >
+              {rulerTicks.map((tick) => (
+                <div
+                  key={tick.time}
+                  style={{ left: `${tick.percent}%` }}
+                  className="absolute flex flex-col items-start transform -translate-x-1/2 pointer-events-none"
+                >
+                  <span className="font-semibold">{tick.label}</span>
+                  <div className="w-px h-1.5 bg-[#2F3020]/30 mt-0.5" />
+                </div>
+              ))}
             </div>
 
-            {transcript?.segments && transcript.segments.length > 0 ? (
-              <div className="relative w-full h-[30px] flex items-center">
-                {transcript.segments.map((seg, sIdx) => {
-                  const left = Math.max(0, (seg.start / safeDuration) * 100);
-                  const width = Math.max(1.5, ((seg.end - seg.start) / safeDuration) * 100);
-                  const isActive = activeSegment?.id === seg.id;
+            {/* Track 1: Captions / Subtitles Layer (T1) */}
+            <div className="h-12 border-b border-[#2F3020]/15 relative bg-[#FAF7F5] flex items-center px-1 overflow-hidden flex-shrink-0">
+              {transcript?.segments && transcript.segments.length > 0 ? (
+                <div className="relative w-full h-[36px] flex items-center">
+                  {transcript.segments.map((seg, sIdx) => {
+                    const left = Math.max(0, (seg.start / safeDuration) * 100);
+                    const width = Math.max(1.2, ((seg.end - seg.start) / safeDuration) * 100);
+                    const isActive = activeSegment?.id === seg.id;
 
-                  return (
-                    <div
-                      key={seg.id || sIdx}
-                      style={{ left: `${left}%`, width: `${width}%` }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onSeek(seg.start);
-                        if (onSelectSegment) onSelectSegment(seg);
-                      }}
-                      className={`absolute inset-y-0 rounded-md text-[10.5px] px-2.5 flex items-center overflow-hidden truncate transition-all cursor-pointer select-none group font-medium shadow-2xs ${
-                        isActive
-                          ? 'bg-[#16A34A] text-white font-bold border border-[#15803D] shadow-sm z-20 ring-2 ring-[#16A34A]/40'
-                          : 'bg-white hover:bg-[#FAF7F5] text-[#2F3020] border border-[#2F3020]/25 shadow-2xs hover:border-[#16A34A]/60'
-                      }`}
-                      title={`${seg.text} (${seg.start}s - ${seg.end}s)`}
-                    >
-                      {/* Trim Handles for active segment */}
-                      {isActive && onUpdateSegmentTime && (
-                        <>
-                          <div
-                            onMouseDown={(e) => handleTrimStart(e, seg)}
-                            className="absolute left-0 top-0 bottom-0 w-2.5 bg-[#14532D] hover:bg-[#0F3E22] cursor-ew-resize flex items-center justify-center z-30 rounded-l-md shadow-xs border-r border-white/20 transition-colors"
-                            title="Drag to trim start time"
-                          >
-                            <div className="w-0.5 h-3 bg-white/80 rounded-full" />
-                          </div>
-                          <div
-                            onMouseDown={(e) => handleTrimEnd(e, seg)}
-                            className="absolute right-0 top-0 bottom-0 w-2.5 bg-[#14532D] hover:bg-[#0F3E22] cursor-ew-resize flex items-center justify-center z-30 rounded-r-md shadow-xs border-l border-white/20 transition-colors"
-                            title="Drag to trim end time"
-                          >
-                            <div className="w-0.5 h-3 bg-white/80 rounded-full" />
-                          </div>
-                        </>
-                      )}
-                      <span
-                        className={`w-1.5 h-1.5 rounded-full flex-shrink-0 mr-1.5 ${
-                          isActive ? 'bg-white animate-pulse' : 'bg-[#16A34A]'
+                    return (
+                      <div
+                        key={seg.id || sIdx}
+                        style={{ left: `${left}%`, width: `${width}%` }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onSeek(seg.start);
+                          if (onSelectSegment) onSelectSegment(seg);
+                        }}
+                        className={`absolute inset-y-0.5 rounded-md text-[11px] px-2 flex items-center justify-center overflow-hidden transition-all cursor-pointer select-none group font-medium shadow-2xs ${
+                          isActive
+                            ? 'bg-[#16A34A] text-white font-bold border border-[#15803D] border-t-2 border-t-white/60 shadow-md z-20 ring-2 ring-[#16A34A]/30'
+                            : 'bg-white hover:bg-emerald-50/40 text-[#2F3020] border border-[#2F3020]/20 border-t-2 border-t-[#16A34A]/50 hover:border-[#16A34A]'
                         }`}
-                      />
-                      <span className="truncate select-none font-semibold">{seg.text}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="flex items-center gap-2 px-3 h-full text-[10px] font-mono text-[#2F3020]/50 italic">
-                <span className="text-[#16A34A] font-bold">T1 Subtitles</span> — No captions generated yet
-              </div>
-            )}
-          </div>
-
-          {/* Track 2: Audio Waveform (A1) */}
-          <div className="h-9 border-b border-[#2F3020]/15 relative bg-[#FAF7F5] flex items-center px-1.5 overflow-hidden flex-shrink-0">
-            <div className="relative w-full h-[28px] rounded-md border border-[#2F3020]/20 bg-white overflow-hidden flex items-center shadow-2xs">
-              <div className="absolute top-0.5 left-2 z-10 flex items-center gap-1 bg-white/90 backdrop-blur-xs px-1.5 py-0.2 rounded text-[7.5px] font-mono font-bold text-[#2F3020]/75 border border-[#2F3020]/15 shadow-2xs pointer-events-none">
-                <span className="text-[#16A34A]">A1</span>
-                <span>48kHz Audio</span>
-              </div>
-              <canvas
-                ref={waveformCanvasRef}
-                width={1600}
-                height={28}
-                className="w-full h-full pointer-events-none"
-              />
-            </div>
-          </div>
-
-          {/* ── Playhead Scrubbing Indicator with Accessible Grab Handle ── */}
-          <div
-            style={{ left: `${playheadPercent}%` }}
-            className="absolute top-0 bottom-0 pointer-events-none z-40 transform -translate-x-1/2 flex flex-col items-center group"
-          >
-            {/* Needle Head Grab Badge (Sits neatly on the ruler) */}
-            <div
-              onMouseDown={(e) => {
-                e.stopPropagation();
-                handleMouseDownTimeline(e);
-              }}
-              className="w-5 h-5 flex flex-col items-center justify-center cursor-ew-resize pointer-events-auto hover:scale-110 active:scale-95 transition-transform"
-              title={`Playhead: ${formatTimecode(currentTime)} (Click or drag to scrub)`}
-            >
-              <div className="w-3.5 h-3 bg-[#D96846] rounded-xs shadow-md border border-white flex flex-col items-center justify-center">
-                <div className="w-1.5 h-0.5 bg-white/90 rounded-full mb-0.5" />
-                <div className="w-1 h-0.5 bg-white/70 rounded-full" />
-              </div>
-              {/* Arrow indicator */}
-              <div className="w-0 h-0 border-x-[2.5px] border-x-transparent border-t-[3px] border-t-[#D96846]" />
+                        title={`"${seg.text}" • ${formatTimecode(seg.start)} - ${formatTimecode(seg.end)}`}
+                      >
+                        {/* Trim Handles for active segment */}
+                        {isActive && onUpdateSegmentTime && (
+                          <>
+                            <div
+                              onMouseDown={(e) => handleTrimStart(e, seg)}
+                              className="absolute left-0 top-0 bottom-0 w-2.5 bg-[#14532D] hover:bg-[#0F3E22] cursor-ew-resize flex items-center justify-center z-30 rounded-l-md border-r border-white/20 transition-colors"
+                              title="Drag to trim start time"
+                            >
+                              <div className="w-0.5 h-3 bg-white/80 rounded-full" />
+                            </div>
+                            <div
+                              onMouseDown={(e) => handleTrimEnd(e, seg)}
+                              className="absolute right-0 top-0 bottom-0 w-2.5 bg-[#14532D] hover:bg-[#0F3E22] cursor-ew-resize flex items-center justify-center z-30 rounded-r-md border-l border-white/20 transition-colors"
+                              title="Drag to trim end time"
+                            >
+                              <div className="w-0.5 h-3 bg-white/80 rounded-full" />
+                            </div>
+                          </>
+                        )}
+                        <span className="truncate select-none font-semibold text-center w-full leading-tight">
+                          {seg.text}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 px-3 h-full text-[10px] font-mono text-[#2F3020]/50 italic">
+                  No captions generated yet
+                </div>
+              )}
             </div>
 
-            {/* Full-height Draggable Vertical Hit Zone Strip */}
+            {/* Track 2: Audio Waveform (A1) */}
+            <div className="h-10 border-b border-[#2F3020]/15 relative bg-[#FAF7F5] flex items-center px-1 overflow-hidden flex-shrink-0">
+              <div className="relative w-full h-[32px] rounded-md border border-[#2F3020]/15 bg-white overflow-hidden flex items-center shadow-2xs">
+                <canvas
+                  ref={waveformCanvasRef}
+                  width={1600}
+                  height={32}
+                  className="w-full h-full pointer-events-none"
+                />
+              </div>
+            </div>
+
+            {/* ── Playhead Scrubbing Indicator with Accessible Grab Handle ── */}
             <div
-              onMouseDown={(e) => {
-                e.stopPropagation();
-                handleMouseDownTimeline(e);
-              }}
-              className="w-3 flex-1 flex justify-center cursor-ew-resize pointer-events-auto group-hover:bg-[#D96846]/10 transition-colors"
-              title="Drag playhead line to scrub"
+              style={{ left: `${playheadPercent}%` }}
+              className="absolute top-0 bottom-0 pointer-events-none z-40 transform -translate-x-1/2 flex flex-col items-center group"
             >
-              <div className="w-0.5 h-full bg-[#D96846] shadow-xs" />
+              {/* Needle Head Grab Badge (Sits neatly on the ruler) */}
+              <div
+                onMouseDown={(e) => {
+                  e.stopPropagation();
+                  handleMouseDownTimeline(e);
+                }}
+                className="w-5 h-5 flex flex-col items-center justify-center cursor-ew-resize pointer-events-auto hover:scale-110 active:scale-95 transition-transform"
+                title={`Playhead: ${formatTimecode(currentTime)} (Click or drag to scrub)`}
+              >
+                <div className="w-3.5 h-3 bg-[#D96846] rounded-xs shadow-md border border-white flex flex-col items-center justify-center">
+                  <div className="w-1.5 h-0.5 bg-white/90 rounded-full mb-0.5" />
+                  <div className="w-1 h-0.5 bg-white/70 rounded-full" />
+                </div>
+                {/* Arrow indicator */}
+                <div className="w-0 h-0 border-x-[2.5px] border-x-transparent border-t-[3px] border-t-[#D96846]" />
+              </div>
+
+              {/* Full-height Draggable Vertical Hit Zone Strip */}
+              <div
+                onMouseDown={(e) => {
+                  e.stopPropagation();
+                  handleMouseDownTimeline(e);
+                }}
+                className="w-3 flex-1 flex justify-center cursor-ew-resize pointer-events-auto group-hover:bg-[#D96846]/10 transition-colors"
+                title="Drag playhead line to scrub"
+              >
+                <div className="w-0.5 h-full bg-[#D96846] shadow-xs" />
+              </div>
             </div>
           </div>
         </div>
