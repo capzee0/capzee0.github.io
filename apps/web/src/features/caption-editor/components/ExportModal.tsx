@@ -18,7 +18,7 @@ import {
   type CaptionStyle,
 } from '@capzee/contracts';
 import { cn } from '@/lib/utils';
-import { renderVideo, pollJob } from '@/services/api';
+import { renderVideo, pollJob, getExportUrl } from '@/services/api';
 
 interface ExportModalProps {
   isOpen: boolean;
@@ -128,7 +128,7 @@ export function ExportModal({
       );
 
       setRenderProgress(100);
-      setRenderedUrl(`/api/v1/projects/${projectId}/export?format=mp4`);
+      setRenderedUrl(getExportUrl(projectId, 'mp4'));
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Rendering failed. Ensure backend AI worker and FFmpeg are available.';
       setRenderError(msg);

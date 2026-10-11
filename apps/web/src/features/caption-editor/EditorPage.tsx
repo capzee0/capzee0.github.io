@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { useProjectStore } from '@/stores/projectStore';
 import {
-  getProject, getTranscript, startTranscription, getJob
+  getProject, getTranscript, startTranscription, getJob, getMediaUrl
 } from '@/services/api';
 import { CaptionOverlay } from './components/CaptionOverlay';
 import { CaptionPresetGallery } from './components/CaptionPresetGallery';
@@ -139,7 +139,7 @@ export function EditorPage() {
         } else if ((project as { localVideoUrl?: string })?.localVideoUrl) {
           setVideoSrc((project as { localVideoUrl?: string }).localVideoUrl!);
         } else if (project?.originalAssetPath) {
-          setVideoSrc(`/api/v1/projects/${projectId}/media`);
+          setVideoSrc(getMediaUrl(projectId!));
         }
 
         // Auto-load or generate captions immediately

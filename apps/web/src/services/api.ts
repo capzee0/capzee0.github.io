@@ -3,7 +3,11 @@
  * Uses the VITE_API_BASE_URL environment variable.
  */
 
-const BASE_URL = ((import.meta as unknown as { env?: { VITE_API_BASE_URL?: string } }).env?.VITE_API_BASE_URL) ?? '/api/v1';
+export const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://capzee-api.onrender.com/api/v1';
+
+export function getMediaUrl(projectId: string): string {
+  return `${BASE_URL}/projects/${projectId}/media`;
+}
 
 class ApiError extends Error {
   constructor(
