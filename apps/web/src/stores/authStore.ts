@@ -40,8 +40,13 @@ export const useAuthStore = create<AuthState>((set) => ({
       const { data: { session } } = await supabase.auth.getSession();
       set({ session, user: session?.user || null, loading: false });
 
-      supabase.auth.onAuthStateChange((_event, newSession) => {
+      supabase.auth.onAuthStateChange((event, newSession) => {
         set({ session: newSession, user: newSession?.user || null, loading: false });
+        if (event === 'SIGNED_IN' && newSession?.user) {
+          if (window.location.pathname === '/' || window.location.pathname === '') {
+            window.location.replace('/dashboard');
+          }
+        }
       });
     } catch {
       set({ loading: false });

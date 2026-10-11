@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import {
   Video, Zap, Mic, Palette, Download, Share2,
@@ -54,6 +55,13 @@ const presets = [
 export function LandingPage() {
   const navigate = useNavigate();
   const { user, openAuthModal } = useAuthStore();
+
+  // Automatically navigate to dashboard if already signed in
+  useEffect(() => {
+    if (user) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [user, navigate]);
 
   const handleGoToApp = () => {
     if (user) {
