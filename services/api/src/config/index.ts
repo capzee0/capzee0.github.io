@@ -103,6 +103,7 @@ function loadConfig(): AppConfig {
       .join('\n');
     console.error('[config] Environment validation failed:\n' + errors);
     process.exit(1);
+    throw new Error('Environment validation failed');
   }
 
   const config = result.data;
@@ -119,6 +120,7 @@ function loadConfig(): AppConfig {
         `  Set CAPZEE_PROCESSING_MODE=local for local development.`
       );
       process.exit(1);
+      throw new Error(`Missing cloud configuration: ${missing.join(', ')}`);
     }
   }
 

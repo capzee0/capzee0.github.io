@@ -1,9 +1,9 @@
 services:
   - type: web
-    name: capzee-api
+    name: capzee0-api
     env: node
     plan: free
-    buildCommand: npm install && npm run build --workspace=@capzee/contracts && npm run build --workspace=@capzee/api
+    buildCommand: npm install --include=dev && npm run build --workspace=@capzee/contracts && npm run build --workspace=@capzee/api
     startCommand: npm run start --workspace=@capzee/api
     healthCheckPath: /health
     envVars:
