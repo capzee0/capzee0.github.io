@@ -6,6 +6,7 @@ import {
   Smartphone, Monitor, Square
 } from 'lucide-react';
 import { useProjectStore } from '@/stores/projectStore';
+import { useAuthStore } from '@/stores/authStore';
 import {
   getProject, getTranscript, startTranscription, getJob, getMediaUrl
 } from '@/services/api';
@@ -39,6 +40,7 @@ export function EditorPage() {
     localVideoFile, setLocalVideoFile,
     currentJob, setCurrentJob, updateJob,
   } = useProjectStore();
+  const { user } = useAuthStore();
 
   // Video playback state
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -628,6 +630,31 @@ export function EditorPage() {
             <Download className="w-3.5 h-3.5 stroke-[2.5]" />
             <span>Export Video</span>
           </button>
+
+          {/* User Profile Pill in Editor Top Bar */}
+          {user && (
+            <button
+              onClick={() => navigate('/dashboard')}
+              className="flex items-center gap-2 px-2.5 py-1 bg-[#FAF7F5] hover:bg-white border border-[#2F3020]/20 rounded-xl cursor-pointer shadow-2xs transition-all text-left group ml-1"
+              title="Return to Dashboard & Profile Settings"
+            >
+              <div className="w-6 h-6 rounded-full p-0.5 bg-gradient-to-tr from-[#16A34A]/50 to-emerald-300 flex-shrink-0 shadow-xs">
+                {user.user_metadata?.avatar_url ? (
+                  <img src={user.user_metadata.avatar_url} alt="" className="w-full h-full rounded-full object-cover" />
+                ) : (
+                  <div className="w-full h-full rounded-full bg-[#D96846] text-white flex items-center justify-center text-[10px] font-black">
+                    {(user.email ? user.email[0] : 'U').toUpperCase()}
+                  </div>
+                )}
+              </div>
+              <span className="text-[11px] font-bold text-[#2F3020] truncate max-w-[110px] hidden md:inline">
+                {user.user_metadata?.full_name || (user.email ? user.email.split('@')[0] : 'User')}
+              </span>
+              <span className="text-[8.5px] font-extrabold text-[#16A34A] bg-[#16A34A]/10 border border-[#16A34A]/30 px-1.5 py-0.5 rounded-full">
+                Free
+              </span>
+            </button>
+          )}
         </div>
       </header>
 

@@ -126,6 +126,8 @@ export function AppLayout() {
   const { user, signOut, openAuthModal } = useAuthStore();
   const userEmail = user?.email || "User";
   const userInitial = (user?.email ? user.email[0] : "U").toUpperCase();
+  const userName = user?.user_metadata?.full_name || (user?.email ? user.email.split('@')[0] : 'User');
+  const avatarUrl = user?.user_metadata?.avatar_url;
 
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#D96846] font-sans select-none text-[#2F3020]">
@@ -150,24 +152,58 @@ export function AppLayout() {
             <span>AI Ready</span>
           </div>
 
-          <button
-            type="button"
-            onClick={() => {
-              if (!user) {
-                openAuthModal();
-              } else {
+          {/* Full User Profile Card Component */}
+          {user ? (
+            <button
+              type="button"
+              onClick={() => {
                 setProfileOpen(true);
                 setActiveSection("plan");
-              }
-            }}
-            className="relative w-8 h-8 rounded-full p-0.5 bg-[#C85A3A] border border-white/40 flex-shrink-0 cursor-pointer shadow-xs hover:scale-105 active:scale-95 transition-all focus:outline-none focus:ring-2 focus:ring-white/50"
-            aria-label="Open profile"
-            id="user-profile-menu-btn"
-          >
-            <div className="w-full h-full rounded-full bg-[#D96846] text-white flex items-center justify-center text-xs font-black shadow-inner border border-white/20">
-              {userInitial}
-            </div>
-          </button>
+              }}
+              className="flex items-center gap-2.5 px-3 py-1.5 bg-[#C85A3A] hover:bg-[#B84E30] border border-white/30 rounded-xl cursor-pointer shadow-xs hover:shadow-md transition-all group select-none text-left"
+              aria-label="Open profile settings"
+              id="user-profile-menu-btn"
+              title="Click to view Account & Plan Settings"
+            >
+              {/* Avatar Circle with Gradient Ring */}
+              <div className="w-8 h-8 rounded-full p-0.5 bg-gradient-to-tr from-white/60 to-white/20 flex-shrink-0 shadow-xs">
+                {avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    alt={userName}
+                    className="w-full h-full rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full rounded-full bg-[#D96846] text-white flex items-center justify-center text-xs font-black shadow-inner border border-white/20">
+                    {userInitial}
+                  </div>
+                )}
+              </div>
+
+              {/* User Name & Email */}
+              <div className="min-w-0 max-w-[130px] sm:max-w-[180px] md:max-w-[220px]">
+                <p className="text-[12px] font-black text-white leading-tight truncate group-hover:text-amber-100 transition-colors">
+                  {userName}
+                </p>
+                <p className="text-[9.5px] text-white/80 truncate mt-0.5 font-medium leading-tight">
+                  {userEmail}
+                </p>
+              </div>
+
+              {/* Free Plan Badge */}
+              <span className="text-[8.5px] font-extrabold text-white bg-black/20 border border-white/30 px-2 py-0.5 rounded-full flex-shrink-0 shadow-2xs">
+                Free
+              </span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => openAuthModal()}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white text-[#2F3020] font-bold text-xs border border-white/40 shadow-xs hover:bg-[#FAF7F5] transition-all cursor-pointer"
+            >
+              Sign In
+            </button>
+          )}
         </div>
       </header>
 
@@ -200,13 +236,21 @@ export function AppLayout() {
               <div className="px-3.5 pt-4 pb-3.5 border-b border-[#2F3020]/20">
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-full p-0.5 bg-gradient-to-tr from-white/60 to-white/20 flex-shrink-0 shadow-xs">
-                    <div className="w-full h-full rounded-full bg-[#D96846] flex items-center justify-center font-black text-xs text-white shadow-inner">
-                      {userInitial}
-                    </div>
+                    {avatarUrl ? (
+                      <img
+                        src={avatarUrl}
+                        alt={userName}
+                        className="w-full h-full rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full rounded-full bg-[#D96846] flex items-center justify-center font-black text-xs text-white shadow-inner">
+                        {userInitial}
+                      </div>
+                    )}
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-[12px] font-black text-white leading-tight truncate">
-                      {user?.user_metadata?.full_name || userEmail.split('@')[0]}
+                      {userName}
                     </p>
                     <p className="text-[9.5px] text-white/80 truncate mt-0.5 font-medium">{userEmail}</p>
                   </div>
