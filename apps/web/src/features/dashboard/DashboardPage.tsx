@@ -520,11 +520,10 @@ export function DashboardPage() {
 
         {/* Projects Container - Single Page Fit */}
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-          {loading ? (
-            <div className="flex flex-wrap gap-3.5">
-              {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="w-[138px] sm:w-[150px] aspect-[9/16] rounded-2xl bg-[#FAF7F5] border border-[#2F3020]/20 animate-pulse" />
-              ))}
+          {loading && projects.length === 0 ? (
+            <div className="w-full h-32 sm:h-36 rounded-2xl bg-[#FAF7F5]/50 border border-[#2F3020]/15 flex flex-col items-center justify-center p-4 text-center shadow-2xs">
+              <Loader2 className="w-5 h-5 text-[#16A34A] animate-spin mb-2" />
+              <p className="text-xs font-semibold text-[#2F3020]/70">Loading projects...</p>
             </div>
           ) : projects.length === 0 ? (
             /* Empty state matching reference image exactly */
