@@ -52,7 +52,17 @@ export function createApp() {
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));
   app.use(requestIdMiddleware);
 
-  // ─── Health ────────────────────────────────────────────────────────────────
+  // ─── Root & Health ─────────────────────────────────────────────────────────
+  app.get('/', (_req, res) => {
+    res.json({
+      name: 'Capzee API',
+      status: 'online',
+      version: '0.1.0',
+      mode: config.CAPZEE_PROCESSING_MODE,
+      health: '/health',
+    });
+  });
+
   app.get('/health', (_req, res) => {
     res.json({
       status: 'ok',
