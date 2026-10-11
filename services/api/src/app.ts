@@ -68,6 +68,14 @@ export function createApp() {
 
   // ─── API Routes ────────────────────────────────────────────────────────────
   const apiRouter = express.Router();
+  apiRouter.get('/health', (_req, res) => {
+    res.json({
+      status: 'ok',
+      version: '0.1.0',
+      timestamp: new Date().toISOString(),
+      mode: config.CAPZEE_PROCESSING_MODE,
+    });
+  });
   apiRouter.use('/projects', projectsRouter);
   apiRouter.use('/projects/:projectId', transcriptsRouter);
   apiRouter.use('/projects/:projectId/social-captions', socialCaptionsRouter);
