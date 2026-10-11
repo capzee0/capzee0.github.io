@@ -84,7 +84,7 @@ export function LandingPage() {
             />
           </Link>
           <div className="flex items-center gap-3">
-            <UserMenu />
+            {user && <UserMenu />}
             <button
               onClick={handleGoToApp}
               className="button-secondary text-sm py-2 px-5 font-bold shadow-sm cursor-pointer"
