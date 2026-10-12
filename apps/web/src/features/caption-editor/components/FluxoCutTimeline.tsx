@@ -3,7 +3,7 @@ import {
   ZoomIn, ZoomOut, Maximize2,
   Undo2, Redo2, Scissors, Trash2,
   RotateCcw, RotateCw, Play, Pause,
-  Clock, Type, Volume2
+  Clock, Type, Volume2, Volume1, VolumeX
 } from 'lucide-react';
 import type { Transcript, Segment } from '@capzee/contracts';
 
@@ -34,7 +34,7 @@ export function FluxoCutTimeline({
   playing,
   onSeek,
   onTogglePlay,
-  videoElement: _videoElement,
+  videoElement,
   transcript,
   activeSegment,
   onSplit,
@@ -51,6 +51,31 @@ export function FluxoCutTimeline({
   const timelineRef = useRef<HTMLDivElement>(null);
   const waveformCanvasRef = useRef<HTMLCanvasElement>(null);
   const [zoom, setZoom] = useState(1);
+  const [playbackSpeed, setPlaybackSpeed] = useState(1);
+  const [isMuted, setIsMuted] = useState(false);
+  const [volume, setVolume] = useState(1);
+
+  // Synchronize playback speed, volume, and mute states to the video element
+  useEffect(() => {
+    if (videoElement) {
+      videoElement.playbackRate = playbackSpeed;
+      videoElement.muted = isMuted;
+      videoElement.volume = isMuted ? 0 : volume;
+    }
+  }, [videoElement, playbackSpeed, isMuted, volume]);
+
+  // Keyboard shortcut: 'M' toggles mute
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return;
+      if (e.key === 'm' || e.key === 'M') {
+        setIsMuted((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
 
   const safeDuration = duration > 0 ? duration : 20.5;
 
@@ -340,6 +365,63 @@ export function FluxoCutTimeline({
 
           <div className="h-3.5 w-px bg-[#2F3020]/15 mx-0.5" />
 
+          {/* Playback Speed Control */}
+          <div className="flex items-center gap-1 bg-white border border-[#2F3020]/20 rounded-md px-1.5 py-0.5 shadow-2xs">
+            <label htmlFor="timeline-playback-speed-select" className="text-[9px] font-mono font-bold text-[#2F3020]/60 hidden xs:inline">
+              Speed
+            </label>
+            <select
+              id="timeline-playback-speed-select"
+              aria-label="Playback speed"
+              value={playbackSpeed}
+              onChange={(e) => setPlaybackSpeed(parseFloat(e.target.value))}
+              className="text-[10px] font-mono font-bold text-[#2F3020] bg-transparent focus:outline-none cursor-pointer"
+            >
+              <option value={0.5}>0.5×</option>
+              <option value={0.75}>0.75×</option>
+              <option value={1}>1.0×</option>
+              <option value={1.25}>1.25×</option>
+              <option value={1.5}>1.5×</option>
+              <option value={2}>2.0×</option>
+            </select>
+          </div>
+
+          {/* Audio Volume & Mute Control */}
+          <div className="flex items-center gap-1 bg-white border border-[#2F3020]/20 rounded-md px-1.5 py-0.5 shadow-2xs">
+            <button
+              type="button"
+              onClick={() => setIsMuted((m) => !m)}
+              className="text-[#2F3020]/75 hover:text-[#16A34A] transition-colors cursor-pointer"
+              title={isMuted ? 'Unmute Audio (M)' : 'Mute Audio (M)'}
+              aria-label={isMuted ? 'Unmute Audio' : 'Mute Audio'}
+            >
+              {isMuted || volume === 0 ? (
+                <VolumeX className="w-3.5 h-3.5 text-rose-500" />
+              ) : volume < 0.5 ? (
+                <Volume1 className="w-3.5 h-3.5 text-[#2F3020]" />
+              ) : (
+                <Volume2 className="w-3.5 h-3.5 text-[#16A34A]" />
+              )}
+            </button>
+            <input
+              id="timeline-volume-slider"
+              type="range"
+              min={0}
+              max={1}
+              step={0.05}
+              value={isMuted ? 0 : volume}
+              onChange={(e) => {
+                const val = parseFloat(e.target.value);
+                setVolume(val);
+                setIsMuted(val === 0);
+              }}
+              className="w-10 sm:w-14 h-1 bg-[#2F3020]/20 accent-[#16A34A] rounded cursor-pointer hidden sm:inline-block"
+              aria-label="Audio volume level"
+            />
+          </div>
+
+          <div className="h-3.5 w-px bg-[#2F3020]/15 mx-0.5" />
+
           {/* Delete button */}
           <button
             onClick={onDelete}
@@ -372,6 +454,8 @@ export function FluxoCutTimeline({
               <ZoomOut className="w-3 h-3" />
             </button>
             <input
+              id="timeline-zoom-slider"
+              aria-label="Timeline zoom level"
               type="range"
               min={1}
               max={3}

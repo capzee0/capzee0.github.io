@@ -18,6 +18,7 @@ const SHORTCUTS = [
   { key: 'J', desc: 'Rewind 2 seconds' },
   { key: 'L', desc: 'Fast-forward 2 seconds' },
   { key: '← / →', desc: 'Step 1 second (Shift: 5s)' },
+  { key: 'M', desc: 'Mute / Unmute audio' },
   { key: 'S', desc: 'Split segment at playhead' },
   { key: 'Del / ⌫', desc: 'Delete active segment' },
   { key: 'Ctrl/⌘ + Z', desc: 'Undo transcript edit' },

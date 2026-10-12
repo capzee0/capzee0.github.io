@@ -118,6 +118,106 @@ describe('TranscriptionPanel', () => {
     expect(screen.getByText('.SRT')).toBeInTheDocument();
     expect(screen.getByText('.VTT')).toBeInTheDocument();
   });
+
+  it('handles search and replace across segments in TranscriptionPanel', () => {
+    const handleTranscriptChange = vi.fn();
+
+    render(
+      <TranscriptionPanel
+        transcript={sampleTranscript}
+        currentJob={null}
+        activeSegment={sampleSegment}
+        onTranscriptChange={handleTranscriptChange}
+        onStartTranscription={vi.fn()}
+        onSeek={vi.fn()}
+      />
+    );
+
+    // Open Find & Replace toolbar
+    const findReplaceBtn = screen.getByRole('button', { name: /find & replace/i });
+    fireEvent.click(findReplaceBtn);
+
+    // Find input and type search query
+    const searchInput = screen.getByPlaceholderText(/find in captions/i);
+    fireEvent.change(searchInput, { target: { value: 'Capzee' } });
+
+    // Expect 1 match badge
+    expect(screen.getByText(/1 of 1/i)).toBeInTheDocument();
+
+    // Type replace text
+    const replaceInput = screen.getByPlaceholderText(/replace with/i);
+    fireEvent.change(replaceInput, { target: { value: 'Capzee AI' } });
+
+    // Click Replace All
+    const replaceAllBtn = screen.getByRole('button', { name: /replace all/i });
+    fireEvent.click(replaceAllBtn);
+
+    expect(handleTranscriptChange).toHaveBeenCalledTimes(1);
+    const updated = handleTranscriptChange.mock.calls[0][0];
+    expect(updated.segments[0].text).toContain('Capzee AI');
+  });
+
+  it('renders Copy Script button and copies text', () => {
+    const writeTextMock = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: writeTextMock,
+      },
+    });
+
+    render(
+      <TranscriptionPanel
+        transcript={sampleTranscript}
+        currentJob={null}
+        activeSegment={sampleSegment}
+        onTranscriptChange={vi.fn()}
+        onStartTranscription={vi.fn()}
+        onSeek={vi.fn()}
+      />
+    );
+
+    const copyBtn = screen.getByRole('button', { name: /copy script/i });
+    fireEvent.click(copyBtn);
+
+    expect(writeTextMock).toHaveBeenCalled();
+  });
+});
+
+describe('FluxoCutTimeline Speed & Volume Controls', () => {
+  it('allows changing playback speed and toggling mute', () => {
+    const dummyVideo = document.createElement('video');
+
+    render(
+      <FluxoCutTimeline
+        currentTime={2.0}
+        duration={10.0}
+        playing={false}
+        onSeek={vi.fn()}
+        onTogglePlay={vi.fn()}
+        videoElement={dummyVideo}
+        transcript={sampleTranscript}
+        activeSegment={sampleSegment}
+      />
+    );
+
+    // Speed selector
+    const speedSelect = screen.getByLabelText(/playback speed/i) as HTMLSelectElement;
+    expect(speedSelect.value).toBe('1');
+    fireEvent.change(speedSelect, { target: { value: '1.5' } });
+    expect(speedSelect.value).toBe('1.5');
+    expect(dummyVideo.playbackRate).toBe(1.5);
+
+    // Mute button
+    const muteBtn = screen.getByLabelText(/mute audio/i);
+    fireEvent.click(muteBtn);
+    expect(dummyVideo.muted).toBe(true);
+
+    // Volume slider
+    const volSlider = screen.getByLabelText(/audio volume level/i) as HTMLInputElement;
+    fireEvent.change(volSlider, { target: { value: '0.8' } });
+    expect(dummyVideo.volume).toBe(0.8);
+    expect(dummyVideo.muted).toBe(false);
+  });
 });
 
 describe('CaptionPresetGallery & Style Controls', () => {

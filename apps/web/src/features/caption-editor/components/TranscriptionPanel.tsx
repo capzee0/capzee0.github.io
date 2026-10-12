@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Loader2, AlertCircle, CheckCircle2, RefreshCw, Upload, Clock,
-  ChevronDown, Plus
+  ChevronDown, ChevronUp, Plus, Search, Copy, Check, X
 } from 'lucide-react';
 import type { Transcript, Segment } from '@capzee/contracts';
 import { parseSRT, parseVTT, generateSRT, generateVTT, getCaptionOutputMeta } from '@capzee/contracts';
@@ -74,6 +74,116 @@ export function TranscriptionPanel({
   const [editText, setEditText] = useState('');
   const [editStart, setEditStart] = useState<number>(0);
   const [editEnd, setEditEnd] = useState<number>(0);
+
+  // Search & Replace state
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [replaceQuery, setReplaceQuery] = useState('');
+  const [isCaseSensitive, setIsCaseSensitive] = useState(false);
+  const [currentMatchIdx, setCurrentMatchIdx] = useState(0);
+  const [copiedScript, setCopiedScript] = useState(false);
+
+  // Computed matches across all transcript segments
+  const searchMatches = useMemo(() => {
+    if (!transcript || !searchQuery.trim()) return [];
+    const query = searchQuery.trim();
+    const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(escaped, isCaseSensitive ? 'g' : 'gi');
+    const matches: Array<{ segId: string; start: number; text: string }> = [];
+
+    transcript.segments.forEach((seg) => {
+      if (regex.test(seg.text)) {
+        matches.push({ segId: seg.id, start: seg.start, text: seg.text });
+      }
+    });
+    return matches;
+  }, [transcript, searchQuery, isCaseSensitive]);
+
+  function handleReplaceCurrent() {
+    if (!transcript || !searchQuery.trim() || searchMatches.length === 0) return;
+    const currentMatch = searchMatches[currentMatchIdx] || searchMatches[0];
+    if (!currentMatch) return;
+
+    const escaped = searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(escaped, isCaseSensitive ? '' : 'i');
+
+    const updatedSegments = transcript.segments.map((s) => {
+      if (s.id !== currentMatch.segId) return s;
+      const newText = s.text.replace(regex, replaceQuery);
+      const newWords = s.words?.map((w) => ({
+        ...w,
+        text: w.text.replace(regex, replaceQuery),
+      }));
+      return { ...s, text: newText, words: newWords || s.words };
+    });
+
+    onTranscriptChange({
+      ...transcript,
+      segments: updatedSegments,
+    });
+  }
+
+  function handleReplaceAll() {
+    if (!transcript || !searchQuery.trim() || searchMatches.length === 0) return;
+    const escaped = searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(escaped, isCaseSensitive ? 'g' : 'gi');
+
+    const updatedSegments = transcript.segments.map((s) => {
+      const newText = s.text.replace(regex, replaceQuery);
+      if (newText === s.text) return s;
+      const newWords = s.words?.map((w) => ({
+        ...w,
+        text: w.text.replace(regex, replaceQuery),
+      }));
+      return { ...s, text: newText, words: newWords || s.words };
+    });
+
+    onTranscriptChange({
+      ...transcript,
+      segments: updatedSegments,
+    });
+  }
+
+  function handleCopyScript() {
+    if (!transcript) return;
+    const script = transcript.segments.map((s) => s.text).join('\n');
+    navigator.clipboard.writeText(script);
+    setCopiedScript(true);
+    setTimeout(() => setCopiedScript(false), 2000);
+  }
+
+  function handleNextMatch() {
+    if (searchMatches.length === 0) return;
+    const nextIdx = (currentMatchIdx + 1) % searchMatches.length;
+    setCurrentMatchIdx(nextIdx);
+    onSeek(searchMatches[nextIdx].start);
+  }
+
+  function handlePrevMatch() {
+    if (searchMatches.length === 0) return;
+    const prevIdx = (currentMatchIdx - 1 + searchMatches.length) % searchMatches.length;
+    setCurrentMatchIdx(prevIdx);
+    onSeek(searchMatches[prevIdx].start);
+  }
+
+  function highlightMatches(text: string) {
+    if (!searchQuery.trim()) return text;
+    const escaped = searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`(${escaped})`, isCaseSensitive ? 'g' : 'gi');
+    const parts = text.split(regex);
+    return parts.map((part, i) =>
+      regex.test(part) ? (
+        <mark
+          key={i}
+          className="bg-amber-300/60 text-[#2F3020] font-bold px-0.5 rounded shadow-2xs"
+        >
+          {part}
+        </mark>
+      ) : (
+        part
+      )
+    );
+  }
 
   const isProcessing = currentJob?.status === 'queued' || currentJob?.status === 'processing';
 
@@ -305,24 +415,157 @@ export function TranscriptionPanel({
       <div className="flex flex-col h-full bg-[#FAF7F5] rounded-xl overflow-hidden border border-[#2F3020]/15 text-[#2F3020]">
         {/* Header with language, add subtitle, export, and regenerate controls */}
         <div className="flex flex-col gap-1.5 px-3 py-2.5 border-b border-[#2F3020]/15 flex-shrink-0 bg-[#FAF7F5]">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-1 flex-wrap">
             <div className="flex items-center gap-1.5">
               <CheckCircle2 className="w-3.5 h-3.5 text-[#16A34A]" />
               <span className="text-xs font-bold text-[#2F3020]">
                 {transcript.segments.length} segments
               </span>
             </div>
-            {onAddSegment && (
+            <div className="flex items-center gap-1">
               <button
-                onClick={onAddSegment}
-                className="flex items-center gap-1 px-2.5 py-1 bg-[#16A34A] hover:bg-[#15803D] text-white text-[10px] font-bold rounded-lg shadow-sm transition-all cursor-pointer"
-                title="Add caption at current playhead"
+                type="button"
+                onClick={() => setSearchOpen((prev) => !prev)}
+                className={cn(
+                  "flex items-center gap-1 px-2 py-1 text-[10px] font-bold rounded-lg border transition-all cursor-pointer",
+                  searchOpen
+                    ? "bg-[#16A34A] text-white border-[#16A34A] shadow-xs"
+                    : "bg-white text-[#2F3020]/80 border-[#2F3020]/15 hover:border-[#16A34A] hover:text-[#16A34A]"
+                )}
+                title="Search and replace caption text"
               >
-                <Plus className="w-3 h-3 stroke-[2.5]" />
-                <span>Add Subtitle</span>
+                <Search className="w-3 h-3" />
+                <span>Find & Replace</span>
               </button>
-            )}
+
+              <button
+                type="button"
+                onClick={handleCopyScript}
+                className="flex items-center gap-1 px-2 py-1 bg-white hover:bg-[#FAF7F5] text-[#2F3020]/80 hover:text-[#16A34A] border border-[#2F3020]/15 rounded-lg text-[10px] font-bold transition-all cursor-pointer"
+                title="Copy entire transcript text"
+              >
+                {copiedScript ? <Check className="w-3 h-3 text-[#16A34A]" /> : <Copy className="w-3 h-3" />}
+                <span>{copiedScript ? 'Copied!' : 'Copy Script'}</span>
+              </button>
+
+              {onAddSegment && (
+                <button
+                  type="button"
+                  onClick={onAddSegment}
+                  className="flex items-center gap-1 px-2 py-1 bg-[#16A34A] hover:bg-[#15803D] text-white text-[10px] font-bold rounded-lg shadow-sm transition-all cursor-pointer"
+                  title="Add caption at current playhead"
+                >
+                  <Plus className="w-3 h-3 stroke-[2.5]" />
+                  <span>Add Subtitle</span>
+                </button>
+              )}
+            </div>
           </div>
+
+          {/* Search & Replace Floating Bar */}
+          {searchOpen && (
+            <div className="bg-white border border-[#2F3020]/15 rounded-xl p-2 space-y-1.5 shadow-2xs mt-1">
+              {/* Row 1: Find Query, Match count, Navigation, Case sensitivity, Clear */}
+              <div className="flex items-center gap-1.5">
+                <div className="relative flex-1 flex items-center">
+                  <Search className="w-3 h-3 text-[#2F3020]/40 absolute left-2 pointer-events-none" />
+                  <input
+                    id="transcription-search-input"
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      setCurrentMatchIdx(0);
+                    }}
+                    placeholder="Find in captions..."
+                    aria-label="Find text in captions"
+                    className="w-full pl-6 pr-6 py-1 text-xs bg-[#FAF7F5] border border-[#2F3020]/15 rounded-lg text-[#2F3020] placeholder:text-[#2F3020]/40 focus:outline-none focus:border-[#16A34A]"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-1.5 text-[#2F3020]/40 hover:text-[#2F3020] cursor-pointer"
+                      title="Clear search"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+
+                {searchQuery.trim() && (
+                  <span className="text-[10px] font-mono font-bold text-[#2F3020]/70 px-1.5 py-0.5 bg-[#FAF7F5] border border-[#2F3020]/10 rounded whitespace-nowrap">
+                    {searchMatches.length > 0 ? `${currentMatchIdx + 1} of ${searchMatches.length}` : '0 found'}
+                  </span>
+                )}
+
+                <div className="flex items-center gap-0.5">
+                  <button
+                    type="button"
+                    onClick={handlePrevMatch}
+                    disabled={searchMatches.length === 0}
+                    className="p-1 rounded text-[#2F3020]/75 hover:bg-black/5 disabled:opacity-30 cursor-pointer"
+                    title="Previous match"
+                  >
+                    <ChevronUp className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleNextMatch}
+                    disabled={searchMatches.length === 0}
+                    className="p-1 rounded text-[#2F3020]/75 hover:bg-black/5 disabled:opacity-30 cursor-pointer"
+                    title="Next match"
+                  >
+                    <ChevronDown className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsCaseSensitive((prev) => !prev)}
+                    className={cn(
+                      "px-1.5 py-0.5 text-[10px] font-bold rounded border cursor-pointer",
+                      isCaseSensitive
+                        ? "bg-[#16A34A]/10 text-[#16A34A] border-[#16A34A]"
+                        : "bg-white text-[#2F3020]/50 border-[#2F3020]/15"
+                    )}
+                    title="Match Case"
+                  >
+                    Aa
+                  </button>
+                </div>
+              </div>
+
+              {/* Row 2: Replace Query & Action Buttons */}
+              <div className="flex items-center gap-1.5">
+                <input
+                  id="transcription-replace-input"
+                  type="text"
+                  value={replaceQuery}
+                  onChange={(e) => setReplaceQuery(e.target.value)}
+                  placeholder="Replace with..."
+                  aria-label="Replace with text"
+                  className="flex-1 px-2.5 py-1 text-xs bg-[#FAF7F5] border border-[#2F3020]/15 rounded-lg text-[#2F3020] placeholder:text-[#2F3020]/40 focus:outline-none focus:border-[#16A34A]"
+                />
+                <button
+                  type="button"
+                  onClick={handleReplaceCurrent}
+                  disabled={searchMatches.length === 0}
+                  className="px-2 py-1 bg-white hover:bg-[#FAF7F5] border border-[#2F3020]/15 text-[#2F3020] text-[10px] font-bold rounded-lg disabled:opacity-40 cursor-pointer transition-colors shadow-2xs"
+                  title="Replace selected occurrence"
+                >
+                  Replace
+                </button>
+                <button
+                  type="button"
+                  onClick={handleReplaceAll}
+                  disabled={searchMatches.length === 0}
+                  className="px-2 py-1 bg-[#16A34A] hover:bg-[#15803D] text-white text-[10px] font-bold rounded-lg disabled:opacity-40 cursor-pointer transition-colors shadow-xs"
+                  title="Replace all occurrences"
+                >
+                  Replace All
+                </button>
+              </div>
+            </div>
+          )}
 
           <div className="flex items-center justify-between pt-1 border-t border-[#2F3020]/10 text-[10px]">
             {/* Quick Export options */}
@@ -458,9 +701,11 @@ export function TranscriptionPanel({
 
                     {/* Fine-tuning Start & End timestamps */}
                     <div className="flex items-center gap-3 text-[10px]">
-                      <label className="flex items-center gap-1 font-mono text-[#2F3020]/80">
+                      <label htmlFor={`edit-start-${seg.id}`} className="flex items-center gap-1 font-mono text-[#2F3020]/80 cursor-pointer">
                         <span className="text-[#2F3020]/50">Start:</span>
                         <input
+                          id={`edit-start-${seg.id}`}
+                          aria-label={`Start time for segment ${seg.id}`}
                           type="number"
                           step="0.1"
                           value={editStart}
@@ -468,9 +713,11 @@ export function TranscriptionPanel({
                           className="w-14 px-1.5 py-0.5 rounded border border-[#2F3020]/20 bg-white text-[#2F3020] text-[10px] font-mono focus:border-[#16A34A] focus:outline-none"
                         />
                       </label>
-                      <label className="flex items-center gap-1 font-mono text-[#2F3020]/80">
+                      <label htmlFor={`edit-end-${seg.id}`} className="flex items-center gap-1 font-mono text-[#2F3020]/80 cursor-pointer">
                         <span className="text-[#2F3020]/50">End:</span>
                         <input
+                          id={`edit-end-${seg.id}`}
+                          aria-label={`End time for segment ${seg.id}`}
                           type="number"
                           step="0.1"
                           value={editEnd}
@@ -504,11 +751,11 @@ export function TranscriptionPanel({
                           className="hover:text-[#16A34A] hover:bg-[#16A34A]/10 cursor-pointer rounded px-1 py-0.5 transition-colors font-medium"
                           title={`Click to seek to ${w.start.toFixed(2)}s`}
                         >
-                          {w.text}
+                          {highlightMatches(w.text)}
                         </span>
                       ))
                     ) : (
-                      <span>{seg.text}</span>
+                      <span>{highlightMatches(seg.text)}</span>
                     )}
                   </div>
                 )}
