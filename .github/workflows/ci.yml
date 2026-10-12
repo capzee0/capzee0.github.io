@@ -18,6 +18,8 @@ jobs:
   test-and-build:
     name: Lint, Typecheck, Test & Build
     runs-on: ubuntu-latest
+    env:
+      ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
 
     steps:
       - name: Checkout Code
@@ -37,6 +39,8 @@ jobs:
           cache-dependency-path: 'services/ai-worker/pyproject.toml'
 
       - name: Install Node Dependencies
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
         run: npm ci || npm install
 
       - name: Build Shared Contracts
