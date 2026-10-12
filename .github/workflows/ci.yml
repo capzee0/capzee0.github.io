@@ -39,6 +39,9 @@ jobs:
       - name: Install Node Dependencies
         run: npm ci || npm install
 
+      - name: Build Shared Contracts
+        run: npm run build --workspace=packages/contracts
+
       - name: Install Python Test Dependencies
         run: |
           python -m pip install --upgrade pip

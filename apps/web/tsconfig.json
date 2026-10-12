@@ -9,7 +9,8 @@
     "noEmit": true,
     "types": ["@testing-library/jest-dom", "vitest/globals"],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@capzee/contracts": ["../../packages/contracts/src/index.ts"]
     },
     "allowImportingTsExtensions": true
   },
