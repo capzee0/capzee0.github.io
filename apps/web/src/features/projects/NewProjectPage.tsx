@@ -4,7 +4,7 @@ import { useDropzone } from 'react-dropzone';
 import { AlertCircle, Loader2, FileVideo, Sparkles, Video, Play } from 'lucide-react';
 import { cn, formatFileSize, formatDuration, ACCEPTED_VIDEO_TYPES } from '@/lib/utils';
 import { createProject, uploadMedia, startTranscription } from '@/services/api';
-import { useProjectStore } from '@/stores/projectStore';
+import { useProjectStore, type Project } from '@/stores/projectStore';
 import { SUPPORTED_TRANSCRIPTION_LANGUAGES, getDemoTranscript, getCaptionOutputMeta } from '@capzee/contracts';
 
 const MAX_FILE_SIZE_BYTES = 500 * 1024 * 1024; // 500 MB
@@ -278,6 +278,28 @@ export function NewProjectPage() {
     noClick: false,
   });
 
+  function handleCreateSample() {
+    const sampleId = `sample-${Date.now()}`;
+    const sampleProject: Project = {
+      id: sampleId,
+      title: 'Viral Creator Showcase',
+      status: 'ready',
+      durationSeconds: 20.5,
+      originalAssetPath: null,
+      localVideoUrl: null,
+      thumbnailUrl: null,
+      qualityLabel: '1080p HD',
+      aspectRatio: '9:16',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    addProject(sampleProject);
+    setCurrentProject(sampleProject);
+    setLocalVideoFile(null);
+    setCurrentTranscript(getDemoTranscript('en', 'native'));
+    navigate(`/editor/${sampleId}`);
+  }
+
   async function handleCreate() {
     if (!selectedFile) {
       setValidationError('Please select a video file first.');
@@ -392,31 +414,46 @@ export function NewProjectPage() {
         <div className="max-w-3xl w-full bg-[#CDCBD6] rounded-2xl border border-[#2F3020]/15 shadow-md p-5 sm:p-6 text-[#2F3020]">
           {!selectedFile ? (
             /* ── State 1: Dropzone before video is imported ── */
-            <div
-              {...getRootProps()}
-              className={cn(
-                'border-2 border-dashed rounded-xl p-8 sm:p-10 text-center cursor-pointer transition-all duration-200 bg-[#FAF7F5]/60 flex flex-col items-center justify-center min-h-[240px]',
-                isDragActive
-                  ? 'border-[#16A34A] bg-[#E3E1EB]'
-                  : 'border-[#2F3020]/25 hover:border-[#16A34A] hover:bg-[#FAF7F5]'
-              )}
-              id="video-dropzone-initial"
-              aria-label="Video file drop area"
-            >
-              <input {...getInputProps()} id="video-file-input-initial" />
-              <div className="space-y-3">
-                <div className="w-14 h-14 rounded-2xl bg-[#FAF7F5] border border-[#2F3020]/15 flex items-center justify-center mx-auto shadow-xs">
-                  <FileVideo className="w-7 h-7 text-[#16A34A]" />
+            <div className="space-y-4">
+              <div
+                {...getRootProps()}
+                className={cn(
+                  'border-2 border-dashed rounded-xl p-8 sm:p-10 text-center cursor-pointer transition-all duration-200 bg-[#FAF7F5]/60 flex flex-col items-center justify-center min-h-[220px]',
+                  isDragActive
+                    ? 'border-[#16A34A] bg-[#E3E1EB]'
+                    : 'border-[#2F3020]/25 hover:border-[#16A34A] hover:bg-[#FAF7F5]'
+                )}
+                id="video-dropzone-initial"
+                aria-label="Video file drop area"
+              >
+                <input {...getInputProps()} id="video-file-input-initial" />
+                <div className="space-y-3">
+                  <div className="w-14 h-14 rounded-2xl bg-[#FAF7F5] border border-[#2F3020]/15 flex items-center justify-center mx-auto shadow-xs">
+                    <FileVideo className="w-7 h-7 text-[#16A34A]" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-[#2F3020] text-base">Drop video file here</p>
+                    <p className="text-xs text-[#2F3020]/70 mt-0.5 font-medium">or click to browse files from your computer</p>
+                  </div>
+                  <div className="flex items-center justify-center gap-2 text-[11px] text-[#2F3020]/60 font-semibold font-mono bg-[#FAF7F5] px-3 py-1 rounded-md border border-[#2F3020]/15">
+                    <span>MP4 · MOV · WebM</span>
+                    <span>•</span>
+                    <span>Max 500 MB</span>
+                  </div>
                 </div>
-                <div>
-                  <p className="font-bold text-[#2F3020] text-base">Drop video file here</p>
-                  <p className="text-xs text-[#2F3020]/70 mt-0.5 font-medium">or click to browse files from your computer</p>
-                </div>
-                <div className="flex items-center justify-center gap-2 text-[11px] text-[#2F3020]/60 font-semibold font-mono bg-[#FAF7F5] px-3 py-1 rounded-md border border-[#2F3020]/15">
-                  <span>MP4 · MOV · WebM</span>
-                  <span>•</span>
-                  <span>Max 500 MB</span>
-                </div>
+              </div>
+
+              <div className="flex items-center justify-center gap-3 pt-1">
+                <span className="text-xs text-[#2F3020]/70 font-semibold">Want to test the studio first?</span>
+                <button
+                  type="button"
+                  onClick={handleCreateSample}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#FAF7F5] hover:bg-white border border-[#2F3020]/20 text-[#2F3020] text-xs font-bold shadow-2xs transition-all cursor-pointer hover:border-[#16A34A]/50"
+                  id="new-project-try-demo-btn"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-[#16A34A]" />
+                  <span>Try Sample Demo Project</span>
+                </button>
               </div>
             </div>
           ) : (

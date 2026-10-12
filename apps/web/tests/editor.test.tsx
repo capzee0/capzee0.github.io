@@ -310,4 +310,39 @@ describe('CaptionPresetGallery & Style Controls', () => {
     expect(screen.getByText('tight')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /remove silences/i })).toBeInTheDocument();
   });
+
+  it('renders AiSocialPanel with viral hooks, tone switcher, and platform captions', async () => {
+    const { AiSocialPanel } = await import('../src/features/caption-editor/components/AiSocialPanel');
+    const handleUpdateTitle = vi.fn();
+
+    render(
+      <AiSocialPanel
+        transcript={sampleTranscript}
+        videoTitle="Amazing Capzee Video"
+        onUpdateTitle={handleUpdateTitle}
+      />
+    );
+
+    expect(screen.getByText('AI Viral Hooks & Social')).toBeInTheDocument();
+    expect(screen.getByText('3 High-CTR Opening Hooks')).toBeInTheDocument();
+    expect(screen.getByText('Platform Caption & Summary')).toBeInTheDocument();
+    expect(screen.getByText('Trending Hashtag Pack')).toBeInTheDocument();
+
+    // Verify tone switcher buttons
+    expect(screen.getByRole('button', { name: 'viral' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'educational' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'bold' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'story' })).toBeInTheDocument();
+
+    // Switch tone
+    const boldBtn = screen.getByRole('button', { name: 'bold' });
+    fireEvent.click(boldBtn);
+
+    // Verify Use Title action works
+    const useTitleBtns = screen.getAllByRole('button', { name: /use title/i });
+    expect(useTitleBtns.length).toBeGreaterThan(0);
+    fireEvent.click(useTitleBtns[0]);
+    expect(handleUpdateTitle).toHaveBeenCalledTimes(1);
+  });
 });
+

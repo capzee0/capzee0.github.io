@@ -282,6 +282,27 @@ export function DashboardPage() {
     removeProject(id); setDeleting(null); setProjectToDelete(null);
   }
 
+  function handleCreateSample() {
+    const sampleId = `sample-${Date.now()}`;
+    const sampleProject: Project = {
+      id: sampleId,
+      title: "Viral Creator Showcase",
+      status: "ready",
+      durationSeconds: 20.5,
+      originalAssetPath: null,
+      localVideoUrl: null,
+      thumbnailUrl: null,
+      qualityLabel: "1080p HD",
+      aspectRatio: "9:16",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    addProject(sampleProject);
+    setCurrentProject(sampleProject);
+    setCurrentTranscript(getDemoTranscript('en', 'native'));
+    navigate(`/editor/${sampleId}`);
+  }
+
   const totalDuration = projects.reduce((s, p) => s + (p.durationSeconds ?? 0), 0);
 
   return (
@@ -489,15 +510,27 @@ export function DashboardPage() {
                     {uploadError && <p className="text-[9px] text-red-600 font-bold mt-0.5">{uploadError}</p>}
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={(e) => { e.stopPropagation(); openFilePicker(); }}
-                    className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-full bg-[#16A34A] hover:bg-[#15803D] text-white text-[11px] font-bold shadow-xs transition-transform active:scale-95 flex-shrink-0 cursor-pointer w-full sm:w-auto"
-                    id="dashboard-new-project-btn"
-                  >
-                    <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-                    <span>New project</span>
-                  </button>
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); handleCreateSample(); }}
+                      className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-full bg-white hover:bg-[#FAF7F5] border border-[#2F3020]/20 text-[#2F3020] text-[11px] font-bold shadow-2xs transition-transform active:scale-95 flex-shrink-0 cursor-pointer"
+                      id="dashboard-try-demo-btn"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-[#16A34A]" />
+                      <span>Try Sample Demo</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); openFilePicker(); }}
+                      className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-full bg-[#16A34A] hover:bg-[#15803D] text-white text-[11px] font-bold shadow-xs transition-transform active:scale-95 flex-shrink-0 cursor-pointer w-full sm:w-auto"
+                      id="dashboard-new-project-btn"
+                    >
+                      <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                      <span>New project</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
@@ -546,12 +579,20 @@ export function DashboardPage() {
               <p className="text-xs font-semibold text-[#2F3020]/70">Loading projects...</p>
             </div>
           ) : projects.length === 0 ? (
-            /* Empty state matching reference image exactly */
-            <div className="w-full h-32 sm:h-36 rounded-2xl bg-[#FAF7F5] border border-[#2F3020]/15 flex flex-col items-center justify-center p-4 text-center shadow-2xs">
-              <Film className="w-5 h-5 text-[#2F3020]/45 stroke-[1.5] mb-2" />
+            /* Empty state matching reference image with quick sample action */
+            <div className="w-full h-32 sm:h-36 rounded-2xl bg-[#FAF7F5] border border-[#2F3020]/15 flex flex-col items-center justify-center p-4 text-center shadow-2xs gap-1">
+              <Film className="w-5 h-5 text-[#2F3020]/45 stroke-[1.5]" />
               <p className="text-[11px] sm:text-[11.5px] font-medium text-[#2F3020]/65">
-                Nothing here yet — drop your first video above.
+                Nothing here yet — drop your first video above or test with our sample demo.
               </p>
+              <button
+                type="button"
+                onClick={handleCreateSample}
+                className="mt-1 px-3 py-1 bg-[#16A34A]/10 hover:bg-[#16A34A]/20 text-[#16A34A] border border-[#16A34A]/30 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Open Sample Creator Studio</span>
+              </button>
             </div>
           ) : (
             <div className="flex-1 min-h-0 overflow-y-auto pr-1">

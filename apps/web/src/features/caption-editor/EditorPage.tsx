@@ -24,6 +24,7 @@ import { ExportModal } from './components/ExportModal';
 import { KeyboardShortcutsModal } from './components/KeyboardShortcutsModal';
 import { FluxoCutTimeline } from './components/FluxoCutTimeline';
 import { FluxoCutSilencePanel } from './components/FluxoCutSilencePanel';
+import { AiSocialPanel } from './components/AiSocialPanel';
 import { formatDuration, cn } from '@/lib/utils';
 import {
   type Segment,
@@ -35,7 +36,8 @@ import {
 } from '@capzee/contracts';
 
 type AspectRatio = '9:16' | '16:9' | '1:1';
-type StudioTab = 'presets' | 'transcript' | 'style' | 'silence';
+type StudioTab = 'presets' | 'transcript' | 'style' | 'silence' | 'ai';
+type MobileTab = 'preview' | 'presets' | 'transcript' | 'style' | 'silence' | 'ai';
 
 export function EditorPage() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -61,7 +63,7 @@ export function EditorPage() {
 
   // Dedicated Caption & Presets Studio UI
   const [studioTab, setStudioTab] = useState<StudioTab>('presets');
-  const [mobileTab, setMobileTab] = useState<'preview' | 'presets' | 'transcript' | 'style' | 'silence'>('preview');
+  const [mobileTab, setMobileTab] = useState<MobileTab>('preview');
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>(
     (captionStyle?.aspectRatio as AspectRatio) || '9:16'
   );
@@ -496,16 +498,66 @@ export function EditorPage() {
 
   function togglePlay() {
     const video = videoRef.current;
-    if (!video) return;
-    if (playing) {
-      video.pause();
+    if (video) {
+      if (playing) {
+        video.pause();
+      } else {
+        video.play().catch((err) => {
+          console.warn('Playback deferred / autoplay policy:', err);
+          setPlaying(false);
+        });
+      }
     } else {
-      video.play().catch((err) => {
-        console.warn('Playback deferred / autoplay policy:', err);
-        setPlaying(false);
-      });
+      // Virtual playback for demo mode / preview canvas without video file
+      setPlaying((prev) => !prev);
     }
   }
+
+  // Virtual clock loop when playing in demo / virtual canvas mode (without HTML video element)
+  useEffect(() => {
+    if (videoSrc) return;
+    if (!playing) return;
+    let animId: number;
+    let lastTime = performance.now();
+    const maxDur = duration > 0 ? duration : 20.5;
+
+    const tick = (now: number) => {
+      const dt = (now - lastTime) / 1000;
+      lastTime = now;
+      setCurrentTime((prev) => {
+        const next = prev + dt;
+        if (next >= maxDur) {
+          setPlaying(false);
+          return 0;
+        }
+        return next;
+      });
+      animId = requestAnimationFrame(tick);
+    };
+
+    animId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(animId);
+  }, [playing, videoSrc, duration]);
+
+  // Sync virtual clock with active segment & word index in demo mode
+  useEffect(() => {
+    if (videoSrc) return;
+    if (currentTranscript?.segments) {
+      const seg = currentTranscript.segments.find(
+        (s) => currentTime >= s.start && currentTime <= s.end
+      ) ?? null;
+      setActiveSegment(seg);
+
+      if (seg?.words && seg.words.length > 0) {
+        const wordIdx = seg.words.findIndex(
+          (w) => currentTime >= w.start && currentTime <= w.end
+        );
+        setActiveWordIndex(wordIdx);
+      } else {
+        setActiveWordIndex(-1);
+      }
+    }
+  }, [currentTime, videoSrc, currentTranscript]);
 
   function seekTo(seconds: number) {
     const video = videoRef.current;
@@ -823,6 +875,18 @@ export function EditorPage() {
             <Scissors className="w-3.5 h-3.5 flex-shrink-0" />
             <span>Silence</span>
           </button>
+          <button
+            onClick={() => { setMobileTab('ai'); setStudioTab('ai'); }}
+            className={cn(
+              "flex-1 py-1 px-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer truncate",
+              mobileTab === 'ai'
+                ? "bg-[#16A34A] text-white shadow-xs"
+                : "text-[#2F3020]/75 hover:text-[#2F3020]"
+            )}
+          >
+            <Sparkles className="w-3.5 h-3.5 flex-shrink-0" />
+            <span>AI</span>
+          </button>
         </div>
       </div>
 
@@ -930,6 +994,69 @@ export function EditorPage() {
                           </div>
                         )}
                       </>
+                    ) : currentTranscript && currentTranscript.segments.length > 0 ? (
+                      /* Virtual Studio Canvas Preview (Allows previewing animated captions even without video file) */
+                      <div className="relative w-full h-full bg-gradient-to-b from-[#2F3020] via-black to-[#2F3020] flex items-center justify-center overflow-hidden">
+                        {/* Dynamic backdrop grid & light beam */}
+                        <div
+                          className="absolute inset-0 opacity-20 pointer-events-none"
+                          style={{
+                            backgroundImage: 'radial-gradient(#16A34A 1px, transparent 1px)',
+                            backgroundSize: '20px 20px',
+                          }}
+                        />
+                        <div className="absolute top-1/4 w-40 h-40 bg-[#16A34A]/15 rounded-full blur-3xl pointer-events-none" />
+
+                        {/* Top banner: Virtual Preview Mode */}
+                        <div className="absolute top-3 left-3 right-3 z-30 flex items-center justify-between pointer-events-none">
+                          <span className="text-[10px] font-mono font-bold text-white/90 bg-[#2F3020]/80 backdrop-blur-xs px-2 py-0.5 rounded-full border border-white/10 shadow-xs flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#16A34A] animate-pulse" />
+                            Studio Preview
+                          </span>
+                          <label className="pointer-events-auto bg-[#16A34A] hover:bg-[#15803D] text-white text-[10px] font-bold py-1 px-2.5 rounded-full shadow-xs cursor-pointer flex items-center gap-1 transition-all hover:scale-105 active:scale-95">
+                            <Upload className="w-3 h-3" />
+                            Add Video
+                            <input
+                              type="file"
+                              accept="video/mp4,video/quicktime,video/webm"
+                              className="hidden"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  setLocalVideoFile(file);
+                                  setVideoSrc(URL.createObjectURL(file));
+                                }
+                              }}
+                            />
+                          </label>
+                        </div>
+
+                        {/* Animated CapCut Captions Overlay in Virtual Canvas */}
+                        {activeSegment && (
+                          <CaptionOverlay
+                            segment={activeSegment}
+                            activeWordIndex={activeWordIndex}
+                            style={captionStyle}
+                            onPositionChange={(offsetY) =>
+                              setCaptionStyle({
+                                position: { ...captionStyle.position, offsetY },
+                              })
+                            }
+                          />
+                        )}
+
+                        {/* Safe Zone Overlay */}
+                        {safeZone && (
+                          <div className="absolute inset-0 pointer-events-none border-2 border-dashed border-[#16A34A] flex flex-col justify-between p-4 z-40">
+                            <span className="text-[10px] font-mono text-white bg-[#16A34A] px-2 py-0.5 rounded-md self-start font-bold shadow-md">
+                              Safe Zone Top
+                            </span>
+                            <span className="text-[10px] font-mono text-white bg-[#16A34A] px-2 py-0.5 rounded-md self-end font-bold shadow-md">
+                              Reels / TikTok UI Safe Zone
+                            </span>
+                          </div>
+                        )}
+                      </div>
                     ) : (
                       <div className="flex flex-col items-center text-center p-8 text-[#2F3020] bg-[#CDCBD6] rounded-2xl border border-[#2F3020]/20 max-w-sm shadow-md">
                         <div className="w-14 h-14 rounded-2xl bg-[#16A34A]/10 border border-[#16A34A]/25 flex items-center justify-center text-[#16A34A] mb-3 shadow-inner">
@@ -1046,6 +1173,19 @@ export function EditorPage() {
                   <Scissors className="w-3.5 h-3.5 flex-shrink-0" />
                   <span>Silence</span>
                 </button>
+
+                <button
+                  onClick={() => setStudioTab('ai')}
+                  className={cn(
+                    "flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer truncate",
+                    studioTab === 'ai'
+                      ? "bg-[#16A34A] text-white shadow-xs"
+                      : "text-[#2F3020]/75 hover:text-[#2F3020] hover:bg-black/5"
+                  )}
+                >
+                  <Sparkles className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span>AI Hooks</span>
+                </button>
               </div>
             </div>
 
@@ -1079,6 +1219,18 @@ export function EditorPage() {
                 <FluxoCutSilencePanel
                   projectId={projectId!}
                   onClipsRemoved={handleClipsRemoved}
+                />
+              )}
+
+              {studioTab === 'ai' && (
+                <AiSocialPanel
+                  transcript={currentTranscript}
+                  videoTitle={currentProject?.title}
+                  onUpdateTitle={(newTitle) => {
+                    if (currentProject) {
+                      setCurrentProject({ ...currentProject, title: newTitle });
+                    }
+                  }}
                 />
               )}
             </div>
@@ -1191,6 +1343,20 @@ export function EditorPage() {
             <FluxoCutSilencePanel
               projectId={projectId!}
               onClipsRemoved={handleClipsRemoved}
+            />
+          </div>
+        )}
+
+        {mobileTab === 'ai' && (
+          <div className="flex-1 overflow-y-auto p-3 bg-[#CDCBD6]">
+            <AiSocialPanel
+              transcript={currentTranscript}
+              videoTitle={currentProject?.title}
+              onUpdateTitle={(newTitle) => {
+                if (currentProject) {
+                  setCurrentProject({ ...currentProject, title: newTitle });
+                }
+              }}
             />
           </div>
         )}
