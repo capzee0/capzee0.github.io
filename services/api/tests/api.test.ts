@@ -1,7 +1,7 @@
 import { describe, it, beforeEach } from 'vitest';
 import assert from 'node:assert/strict';
 import request from 'supertest';
-import { createApp } from '../dist/app.js';
+import { createApp } from '../src/app.js';
 
 const app = createApp();
 
@@ -263,7 +263,7 @@ describe('Export and Render Endpoints', () => {
 
 describe('Jobs and SSE Progress Pipeline', () => {
   it('GET /api/v1/jobs/:id/events streams initial SSE snapshot and closes on completed state', async () => {
-    const { createJob, updateJob } = await import('../dist/db/local-store.js');
+    const { createJob, updateJob } = await import('../src/db/local-store.js');
     const job = createJob({ projectId: '00000000-0000-0000-0000-000000000001', jobType: 'transcribe' });
 
     // Mark job completed after a brief delay so SSE sends both snapshot & completion
@@ -289,7 +289,7 @@ describe('Jobs and SSE Progress Pipeline', () => {
   });
 
   it('TranscriptionProvider fallback chain executes mock provider cleanly', async () => {
-    const { MockWhisperProvider } = await import('../dist/providers/transcription/mock.js');
+    const { MockWhisperProvider } = await import('../src/providers/transcription/mock.js');
     const provider = new MockWhisperProvider();
     assert.equal(provider.name, 'mock');
     assert.equal(provider.isAvailable(), true);
