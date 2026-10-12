@@ -9,30 +9,30 @@ Capzee is a production-grade, AI-powered video captioning and smart editing plat
 ```
 capzee/
 ├── apps/
-│   ├── web/           # React 18 + Vite + Tailwind CSS + Radix UI + Zustand (Creator Studio)
+│   ├── web/           # React 18 + Vite + Tailwind CSS + Radix UI + Zustand (3-Pane Studio)
 │   └── desktop/       # Electron desktop app with native file dialogs and window controls
 ├── packages/
-│   └── contracts/     # Shared schemas, Zod validators, presets, and SRT/VTT generators
+│   └── contracts/     # Shared schemas, Zod validators, presets, SRT/VTT/ASS generators
 └── services/
-    ├── api/           # Node.js + Express 5 REST API (Projects, Jobs, Transcripts, Social)
-    └── ai-worker/     # Python 3 worker (faster-whisper, media inspection, SRT/VTT engine)
+    ├── api/           # Node.js + Express 5 REST API (Projects, SSE Jobs, Transcripts, Storage)
+    └── ai-worker/     # Python 3 worker (faster-whisper, media inspection, ASS/FFmpeg render engine)
 ```
 
 ### 1. High-Performance Monorepo
-- **`packages/contracts`**: Universal TypeScript contracts, Zod schemas, and caption presets. Pure ESM, zero runtime bloat.
-- **`apps/web`**: Dark-aesthetic studio interface with real-time video preview, synchronized word-by-word highlights, caption styling panel, and export options.
+- **`packages/contracts`**: Universal TypeScript contracts, Zod schemas, and caption presets. Pure ESM, zero runtime bloat. Includes `generateSRT`, `generateVTT`, `generateASS`, and `generatePlainText`.
+- **`apps/web`**: Dark-aesthetic studio interface with **3-Pane Resizable Layout** (`react-resizable-panels`), real-time video preview, synchronized word-by-word highlights, safe-zone guides, timeline scrubber, silence remover, and export modal.
 - **`apps/desktop`**: Electron-powered desktop application with native file pickers (`.mp4`, `.mov`, `.webm`, `.mkv`), native menus, and direct filesystem export.
-- **`services/api`**: REST API with modular routers, job queue management, local in-memory/file storage with cloud-ready architecture.
-- **`services/ai-worker`**: Speech-to-text pipeline supporting Whisper models (`tiny`, `base`, `small`, `medium`, `large-v3`) with Tamil, Tanglish, Hindi, and multilingual recognition, plus auto-fallback.
+- **`services/api`**: REST API with real-time **Server-Sent Events (SSE)** job streaming, magic bytes media validation, modular storage provider (Local Disk + Supabase direct signed URLs), and silence detection.
+- **`services/ai-worker`**: Speech-to-text pipeline supporting Whisper models (`tiny`, `base`, `small`, `medium`, `large-v3`) with Tamil, Tanglish, Hindi, and multilingual recognition, plus automatic cloud fallback chain (Groq ➡️ OpenAI ➡️ Local Whisper ➡️ Mock).
 
 ---
 
 ## 🛠️ Quickstart
 
 ### Prerequisites
-- **Node.js**: v18.0.0 or later (v24 recommended)
+- **Node.js**: v18.0.0 or later (v20+ recommended)
 - **Python**: 3.9+ (Python 3.10–3.14 supported)
-- **FFmpeg**: Optional for UI/mock mode; required for live audio extraction and burned-in video rendering.
+- **Docker** (optional): For running PostgreSQL 16 & Redis 7 services locally.
 
 ### Installation
 
@@ -51,6 +51,10 @@ npm run dev
 npm run dev:web        # Launches Vite development server on http://localhost:5173
 npm run dev:api        # Launches Express API on http://localhost:4000
 npm run dev:desktop    # Launches Electron Desktop application
+
+# 3. Optional: Start local Postgres and Redis via Docker
+npm run docker:up
+npm run docker:down
 ```
 
 ### Building for Production
@@ -64,48 +68,50 @@ npm run build
 
 ## 🧪 Testing & Quality Assurance
 
-Each workspace includes test suites:
+Each workspace includes automated test suites with **93 passing tests**:
 
 ```bash
-# Test shared contracts
-node --experimental-strip-types --test packages/contracts/tests/contracts.test.ts
+# Run all Node.js and React tests across monorepo workspaces (Vitest)
+npm test
 
-# Test API endpoints
-node --experimental-strip-types --test services/api/tests/api.test.ts
+# Run Python AI worker tests (pytest)
+npm run test:worker
 
-# Test Web app utilities
-node --experimental-strip-types --test apps/web/tests/utils.test.ts
-
-# Test Python AI worker (captions, inspector, schemas)
-python -m pytest services/ai-worker/tests/
+# Run full TypeScript typecheck
+npm run typecheck
 ```
 
-### Test Summary
-- **Python AI Worker**: 17 tests passed (`test_captions.py`, `test_inspector.py`)
-- **Shared Contracts**: 11 tests passed (`contracts.test.ts`)
-- **Backend API**: 14 tests passed (`api.test.ts`)
-- **Frontend Utilities**: 10 tests passed (`utils.test.ts`)
-- **Total**: 52 passed tests across all components.
+### Test Suite Breakdown
+- **`@capzee/web`**: 28 passed tests (Dashboard, Studio, Timeline, Silence Remover, Utils)
+- **`@capzee/api`**: 26 passed tests (Projects, SSE Jobs, Transcription Fallback, Media Validation, Storage)
+- **`@capzee/contracts`**: 19 passed tests (Schemas, Presets, SRT, VTT, ASS Subtitles)
+- **`ai-worker`**: 20 passed tests (ASS Subtitle Generation, Media Inspector, Schema validation)
+- **Total**: 93 passed tests with 100% pass rate.
 
 ---
 
 ## 🎨 Features & Capabilities
 
-### Word-Level Animated Subtitles
+### 3-Pane Creator Studio
+- **Left Pane**: Viral Preset Gallery with animated CapCut-style presets.
+- **Center Pane**: Video Canvas with draggable `CaptionOverlay`, TikTok / Reels Safe Zone overlay, and `FluxoCutTimeline` with timecode scrubber and waveform visualization.
+- **Right Pane**: Multi-tab Inspector featuring:
+  - **Captions**: Word-level subtitle editor, Tanglish toggle, confidence indicators, add/split/merge actions.
+  - **Style**: Comprehensive typography, color palettes, border, shadow, and positioning controls.
+  - **Silence Cut**: One-click AI silence remover with Gentle, Balanced, and Tight pause thresholds.
+
+### Word-Level Animated Subtitles & Parity
 - Real-time timestamp tracking down to millisecond accuracy.
-- Viral caption presets:
-  - **Clean White**: Professional outline with subtle drop shadow.
-  - **Viral Yellow**: High-converting TikTok/Reels style with bold yellow active-word highlight.
-  - **Neon Green**: Modern gaming/vlog contrast style.
-  - **Bold Box**: High-readability solid pill background.
-- Full customization: Font family, font size, active word color, text color, outline width, shadows, background opacity, safe-area margins, and aspect ratios (9:16, 16:9, 1:1).
+- **Tamil & Tanglish Font Stack**: Embedded `'Noto Sans Tamil'` font fallback ensures Tamil characters render cleanly without missing glyph tofu blocks in both web canvas preview and burned-in video exports.
+- **3-Word Windowing**: Keeps dialogue readable without screen flooding, highlighting active words in synchronization with speech.
 
 ### Subtitle & Video Export
-- **SubRip (.SRT)**: Standard subtitle files with escaped formatting and clean timestamping.
-- **WebVTT (.VTT)**: HTML5-compliant web subtitles for modern video platforms.
+- **SubRip (.SRT)**: Standard subtitle files compatible with YouTube, Premiere Pro, and DaVinci Resolve.
+- **WebVTT (.VTT)**: HTML5-compliant web subtitles for modern web players.
+- **Styled SubStation (.ASS)**: Advanced subtitle file preserving full CapZee typography, colors, and word animations for professional NLEs.
 - **Transcript (.JSON)**: Complete data hierarchy with word-level bounds and confidence scores.
-- **Clean Script (.TXT)**: Timestamp-free readable script for copy-pasting into blog posts or articles.
-- **Burned-in Video (MP4)**: Video re-encoding with captions burned directly into the video stream.
+- **Clean Script (.TXT)**: Timestamp-free readable script for articles and show notes.
+- **Burned-in Video (MP4)**: Video re-encoding with captions burned directly into the video stream via FFmpeg.
 
 ### AI Social Media Caption Generator
 - Generates platform-tailored post copy:
@@ -113,11 +119,11 @@ python -m pytest services/ai-worker/tests/
   - **TikTok**: High-energy trend hooks and viral hashtags.
   - **YouTube Shorts**: SEO-optimized short descriptions and engagement triggers.
 - Multiple tone options: *Conversational*, *Educational*, *Hype*, *Professional*, *Cinematic*, *Inspirational*.
-- Multilingual and Tanglish support.
 
 ---
 
 ## 🔒 Security & Resilience
-- **Strict Content Security Policy & CORS** implemented across API services.
-- **Graceful Degradation**: If FFmpeg or native GPU drivers are absent, the platform cleanly falls back to demo mode with clear diagnostics and download links in Settings.
-- **Windows Application Control Compatibility**: Pure WebAssembly and pure Python fallback schemes ensure zero blocking by corporate security policies.
+- **Magic Bytes Validation**: Uploaded media is verified at the binary header level (MP4 `ftyp`, WebM EBML, WAV RIFF, MP3 ID3/sync) preventing malicious file disguised extensions.
+- **SSE Real-time Streaming**: Non-blocking asynchronous job queue with Server-Sent Events and client polling fallback.
+- **Multi-Provider Fallback**: Seamless fallback across Groq, OpenAI, Local Faster-Whisper, and deterministic Mock providers.
+- **Strict Content Security Policy & CORS** configured across API services.

@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Instagram, Youtube, Globe, Loader2, AlertCircle, Copy,
   Check, RefreshCw, ChevronLeft
 } from 'lucide-react';
 import { useProjectStore } from '@/stores/projectStore';
-import { generateSocialCaptions } from '@/services/api';
+import { generateSocialCaptions, getTranscript } from '@/services/api';
 import type { SocialCaptionOutput } from '@capzee/contracts';
 import { cn } from '@/lib/utils';
 
@@ -50,7 +50,7 @@ function CopyButton({ text }: { text: string }) {
 export function SocialCaptionsPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
-  const { currentTranscript } = useProjectStore();
+  const { currentTranscript, setCurrentTranscript } = useProjectStore();
 
   const [platform, setPlatform] = useState<typeof PLATFORMS[number]['id']>('instagram_reels');
   const [tone, setTone] = useState<typeof TONES[number]>('conversational');
@@ -60,6 +60,17 @@ export function SocialCaptionsPage() {
   const [captions, setCaptions] = useState<SocialCaptionOutput[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!projectId || currentTranscript) return;
+    getTranscript(projectId)
+      .then((t) => {
+        if (t) setCurrentTranscript(t);
+      })
+      .catch(() => {
+        // ignore if not ready
+      });
+  }, [projectId, currentTranscript, setCurrentTranscript]);
 
   async function generate() {
     if (!projectId) return;

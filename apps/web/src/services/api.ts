@@ -186,12 +186,66 @@ export async function renderVideo(
   });
 }
 
+export type JobUpdate = {
+  id: string;
+  status: string;
+  progress: number;
+  stage: string | null;
+  errorCode: string | null;
+  errorMessage: string | null;
+};
+
+/**
+ * Subscribes to real-time Job progress events via Server-Sent Events (SSE).
+ * Transparently falls back to polling if SSE fails or is unsupported.
+ */
+export function subscribeJobEvents(
+  jobId: string,
+  onProgress?: (job: JobUpdate) => void
+): Promise<JobUpdate> {
+  return new Promise((resolve, reject) => {
+    if (typeof window !== 'undefined' && typeof window.EventSource !== 'undefined') {
+      const url = `${BASE_URL}/jobs/${jobId}/events`;
+      const es = new EventSource(url);
+
+      es.onmessage = (event) => {
+        try {
+          const job = JSON.parse(event.data) as JobUpdate;
+          if (onProgress) onProgress(job);
+          if (job.status === 'completed') {
+            es.close();
+            resolve(job);
+          } else if (job.status === 'failed') {
+            es.close();
+            reject(new Error(job.errorMessage || 'Job failed'));
+          } else if (job.status === 'cancelled') {
+            es.close();
+            reject(new Error('Job was cancelled'));
+          }
+        } catch {
+          // heartbeat comment or non-json ping
+        }
+      };
+
+      es.onerror = () => {
+        es.close();
+        // Fallback to polling
+        pollJob(jobId, onProgress).then(resolve).catch(reject);
+      };
+      return;
+    }
+
+    // Direct polling fallback
+    pollJob(jobId, onProgress).then(resolve).catch(reject);
+  });
+}
+
 export async function pollJob(
   jobId: string,
-  onProgress?: (job: { id: string; status: string; progress: number; stage: string | null; errorCode: string | null; errorMessage: string | null }) => void,
+  onProgress?: (job: JobUpdate) => void,
   intervalMs = 2000,
   maxAttempts = 60,
-) {
+): Promise<JobUpdate> {
   let attempts = 0;
   while (attempts < maxAttempts) {
     const job = await getJob(jobId);

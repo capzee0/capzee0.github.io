@@ -50,8 +50,10 @@ def generate_ass_subtitles(transcript: Transcript, style: dict) -> str:
     """
     Generate Advanced SubStation Alpha (.ass) subtitle file content
     with typography, outline, shadow, alignment, and word highlights.
+    Matches CaptionOverlay web canvas rendering for visual parity.
     """
-    font_name = style.get("fontFamily", "Inter")
+    raw_font = style.get("fontFamily", "Inter")
+    font_name = f"{raw_font}, Noto Sans Tamil, sans-serif" if raw_font else "Noto Sans Tamil, Inter, sans-serif"
     font_size = int(style.get("fontSize", 32))
     primary_color = _hex_to_ass_color(style.get("textColor", "#FFFFFF"), "&H00FFFFFF")
     highlight_color = _hex_to_ass_color(style.get("activeWordColor", "#FACC15"), "&H0015CAFA")
@@ -63,7 +65,8 @@ def generate_ass_subtitles(transcript: Transcript, style: dict) -> str:
     # Alignment: 2 = bottom-center, 8 = top-center, 5 = middle-center
     pos_v = (style.get("position") or {}).get("vertical", "bottom")
     alignment = 2 if pos_v == "bottom" else (8 if pos_v == "top" else 5)
-    margin_v = 40
+    offset_y = (style.get("position") or {}).get("offsetY", 0)
+    margin_v = max(20, int(60 + offset_y * 6))
 
     ass_content = [
         "[Script Info]",
@@ -84,6 +87,7 @@ def generate_ass_subtitles(transcript: Transcript, style: dict) -> str:
     ]
 
     is_uppercase = bool(style.get("uppercase", False))
+    anim_mode = style.get("animationMode", "phrase")
 
     for seg in transcript.segments:
         start_t = _format_ass_time(seg.start)
@@ -92,19 +96,25 @@ def generate_ass_subtitles(transcript: Transcript, style: dict) -> str:
         if is_uppercase:
             text = text.upper()
 
-        # If words exist and word animation is requested, highlight active words
         words = getattr(seg, "words", None) or []
-        anim_mode = style.get("animationMode", "phrase")
 
         if words and anim_mode in ("word-by-word", "karaoke"):
-            # Emit dialogue per word or with highlight tags
-            for w in words:
-                w_start = _format_ass_time(w.start)
-                w_end = _format_ass_time(w.end)
-                w_text = w.text.upper() if is_uppercase else w.text
-                ass_content.append(
-                    f"Dialogue: 0,{w_start},{w_end},Default,,0,0,0,,{{\\c{highlight_color}&}}{w_text}"
-                )
+            # Chunk words (3 per window) to prevent screen flooding while highlighting active word
+            chunk_size = 3
+            for i in range(0, len(words), chunk_size):
+                chunk = words[i : i + chunk_size]
+                for active_idx, w in enumerate(chunk):
+                    w_start = _format_ass_time(w.start)
+                    w_end = _format_ass_time(w.end)
+                    words_markup = []
+                    for idx, item in enumerate(chunk):
+                        item_text = item.text.upper() if is_uppercase else item.text
+                        if idx == active_idx:
+                            words_markup.append(f"{{\\c{highlight_color}&}}{item_text}{{\\c{primary_color}&}}")
+                        else:
+                            words_markup.append(item_text)
+                    line_text = " ".join(words_markup)
+                    ass_content.append(f"Dialogue: 0,{w_start},{w_end},Default,,0,0,0,,{line_text}")
         else:
             ass_content.append(f"Dialogue: 0,{start_t},{end_t},Default,,0,0,0,,{text}")
 

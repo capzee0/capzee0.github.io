@@ -14,11 +14,12 @@ import {
   generateSRT,
   generateVTT,
   generatePlainText,
+  generateASS,
   type Transcript,
   type CaptionStyle,
 } from '@capzee/contracts';
 import { cn } from '@/lib/utils';
-import { renderVideo, pollJob, getExportUrl } from '@/services/api';
+import { renderVideo, subscribeJobEvents, getExportUrl } from '@/services/api';
 
 interface ExportModalProps {
   isOpen: boolean;
@@ -103,6 +104,12 @@ export function ExportModal({
     triggerDownload(txt, `${baseFileName}_script.txt`, 'text/plain;charset=utf-8');
   }
 
+  function downloadASS() {
+    if (!transcript) return;
+    const ass = generateASS(transcript, captionStyle);
+    triggerDownload(ass, `${baseFileName}_styled.ass`, 'text/x-ssa;charset=utf-8');
+  }
+
   async function handleStartRender() {
     setRendering(true);
     setRenderError(null);
@@ -115,16 +122,14 @@ export function ExportModal({
         style: captionStyle,
       });
 
-      // Poll render job
-      await pollJob(
+      // Stream render job progress via SSE (with polling fallback)
+      await subscribeJobEvents(
         job.id,
-        (updatedJob: { progress?: number }) => {
+        (updatedJob) => {
           if (updatedJob.progress != null) {
             setRenderProgress(Math.max(10, Math.min(updatedJob.progress, 95)));
           }
-        },
-        3000,
-        60
+        }
       );
 
       setRenderProgress(100);
@@ -140,6 +145,7 @@ export function ExportModal({
   const srtContent = transcript ? generateSRT(transcript) : '';
   const vttContent = transcript ? generateVTT(transcript) : '';
   const txtContent = transcript ? generatePlainText(transcript) : '';
+  const assContent = transcript ? generateASS(transcript, captionStyle) : '';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#2F3020]/75 backdrop-blur-sm animate-fade-in">
@@ -264,6 +270,34 @@ export function ExportModal({
                       <button
                         onClick={downloadVTT}
                         className="text-xs px-3 py-1.5 flex items-center gap-1.5 bg-[#16A34A] hover:bg-[#15803D] text-white rounded font-bold shadow-xs transition-colors cursor-pointer"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        <span>Download</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Styled ASS Subtitles */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-3.5 bg-[#FAF7F5] border border-[#2F3020]/15 rounded-xl shadow-xs gap-2.5">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-sm text-[#2F3020]">Styled SubStation (.ASS)</span>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#D96846]/15 text-[#D96846] font-bold">CapZee Styles</span>
+                      </div>
+                      <p className="text-xs text-[#2F3020]/70 mt-0.5">Retains exact CapZee fonts, colors & word animations in Premiere & DaVinci</p>
+                    </div>
+                    <div className="flex items-center gap-2 self-end sm:self-auto">
+                      <button
+                        onClick={() => handleCopy(assContent, 'ass')}
+                        className="text-xs px-2.5 py-1.5 flex items-center gap-1.5 bg-[#CDCBD6] hover:bg-[#CDCBD6]/80 text-[#2F3020] rounded font-semibold transition-colors cursor-pointer"
+                        title="Copy ASS to clipboard"
+                      >
+                        {copiedFormat === 'ass' ? <Check className="w-3.5 h-3.5 text-[#16A34A]" /> : <Copy className="w-3.5 h-3.5" />}
+                        <span>{copiedFormat === 'ass' ? 'Copied' : 'Copy'}</span>
+                      </button>
+                      <button
+                        onClick={downloadASS}
+                        className="text-xs px-3 py-1.5 flex items-center gap-1.5 bg-[#D96846] hover:bg-[#c55736] text-white rounded font-bold shadow-xs transition-colors cursor-pointer"
                       >
                         <Download className="w-3.5 h-3.5" />
                         <span>Download</span>

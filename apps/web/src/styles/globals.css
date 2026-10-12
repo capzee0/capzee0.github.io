@@ -31,7 +31,7 @@
   body {
     background-color: #D96846;
     color: #2F3020;
-    font-family: Inter, system-ui, -apple-system, sans-serif;
+    font-family: Inter, 'Noto Sans Tamil', system-ui, -apple-system, sans-serif;
     min-height: 100vh;
     overflow-x: hidden;
   }

@@ -192,4 +192,22 @@ describe('CaptionPresetGallery & Style Controls', () => {
     fireEvent.click(resetBtn);
     expect(handleChange).toHaveBeenCalled();
   });
+
+  it('renders FluxoCutSilencePanel with sensitivity presets and action button', async () => {
+    const { FluxoCutSilencePanel } = await import('../src/features/caption-editor/components/FluxoCutSilencePanel');
+    const handleClipsRemoved = vi.fn();
+
+    render(
+      <FluxoCutSilencePanel
+        projectId="test-proj-123"
+        onClipsRemoved={handleClipsRemoved}
+      />
+    );
+
+    expect(screen.getByText('Silence Remover')).toBeInTheDocument();
+    expect(screen.getByText('gentle')).toBeInTheDocument();
+    expect(screen.getByText('balanced')).toBeInTheDocument();
+    expect(screen.getByText('tight')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /remove silences/i })).toBeInTheDocument();
+  });
 });

@@ -208,22 +208,101 @@ describe('Export and Render Endpoints', () => {
     assert.equal(res.body.segments.length, 1);
   });
 
+  it('GET /api/v1/projects/:id/export?format=ass returns styled ASS subtitle file', async () => {
+    const res = await request(app).get(`/api/v1/projects/${projectId}/export?format=ass`);
+    assert.equal(res.status, 200);
+    assert.ok(res.headers['content-type']?.includes('text/x-ssa'));
+    assert.ok(res.text.includes('[Script Info]'));
+    assert.ok(res.text.includes('[V4+ Styles]'));
+    assert.ok(res.text.includes('Welcome to Capzee testing'));
+  });
+
   it('POST /api/v1/projects/:id/render returns 422 NO_MEDIA when no file uploaded', async () => {
     const res = await request(app).post(`/api/v1/projects/${projectId}/render`).send({});
     assert.equal(res.status, 422);
     assert.equal(res.body.error.code, 'NO_MEDIA');
   });
 
-  it('POST /api/v1/projects/:id/media uploads a file buffer', async () => {
-    const fakeMp4 = Buffer.from('fake mp4 video content for testing upload pipeline');
+  it('POST /api/v1/projects/:id/media rejects invalid/fake file with INVALID_MEDIA_TYPE', async () => {
+    const plainTextFile = Buffer.from('this is plain text not a valid video or audio format');
     const res = await request(app)
       .post(`/api/v1/projects/${projectId}/media`)
-      .attach('file', fakeMp4, 'test-sample.mp4');
+      .attach('file', plainTextFile, 'malicious.mp4');
+    assert.equal(res.status, 400);
+    assert.equal(res.body.success, false);
+    assert.equal(res.body.error.code, 'INVALID_MEDIA_TYPE');
+  });
+
+  it('POST /api/v1/projects/:id/media accepts valid MP4 container with magic bytes', async () => {
+    // Construct valid ISO BMFF MP4 header: 4-byte box size + 'ftyp' + 'isom' brand
+    const validMp4 = Buffer.concat([
+      Buffer.from([0x00, 0x00, 0x00, 0x20]),
+      Buffer.from('ftypisom', 'ascii'),
+      Buffer.from([0x00, 0x00, 0x02, 0x00]),
+      Buffer.from('isommp41', 'ascii'),
+      Buffer.alloc(64, 0),
+    ]);
+    const res = await request(app)
+      .post(`/api/v1/projects/${projectId}/media`)
+      .attach('file', validMp4, 'test-sample.mp4');
     assert.equal(res.status, 200);
     assert.equal(res.body.success, true);
     assert.ok(res.body.data.originalAssetPath);
   });
+
+  it('POST /api/v1/projects/:id/upload-intent returns signed upload metadata', async () => {
+    const res = await request(app)
+      .post(`/api/v1/projects/${projectId}/upload-intent`)
+      .send({ filename: 'reel.mp4', mimeType: 'video/mp4' });
+    assert.equal(res.status, 200);
+    assert.equal(res.body.success, true);
+    assert.ok(res.body.data.uploadUrl);
+    assert.ok(res.body.data.fileKey);
+  });
 });
+
+describe('Jobs and SSE Progress Pipeline', () => {
+  it('GET /api/v1/jobs/:id/events streams initial SSE snapshot and closes on completed state', async () => {
+    const { createJob, updateJob } = await import('../dist/db/local-store.js');
+    const job = createJob({ projectId: '00000000-0000-0000-0000-000000000001', jobType: 'transcribe' });
+
+    // Mark job completed after a brief delay so SSE sends both snapshot & completion
+    setTimeout(() => {
+      updateJob(job.id, { status: 'completed', stage: 'done', progress: 100 });
+    }, 100);
+
+    const sseRes = await request(app)
+      .get(`/api/v1/jobs/${job.id}/events`)
+      .buffer(true);
+
+    assert.equal(sseRes.status, 200);
+    assert.ok(sseRes.headers['content-type']?.includes('text/event-stream'));
+    assert.ok(sseRes.text.includes('data: {'));
+    assert.ok(sseRes.text.includes(job.id));
+    assert.ok(sseRes.text.includes('"status":"completed"'));
+  });
+
+  it('GET /api/v1/jobs/:id/events returns 404 for unknown job ID', async () => {
+    const res = await request(app).get('/api/v1/jobs/00000000-0000-0000-0000-000000000000/events');
+    assert.equal(res.status, 404);
+    assert.equal(res.body.error.code, 'JOB_NOT_FOUND');
+  });
+
+  it('TranscriptionProvider fallback chain executes mock provider cleanly', async () => {
+    const { MockWhisperProvider } = await import('../dist/providers/transcription/mock.js');
+    const provider = new MockWhisperProvider();
+    assert.equal(provider.name, 'mock');
+    assert.equal(provider.isAvailable(), true);
+
+    const result = await provider.transcribe({
+      filePath: 'dummy.mp4',
+      language: 'en',
+    });
+    assert.ok(result.segments.length > 0);
+    assert.equal(result.schemaVersion, 1);
+  });
+});
+
 
 describe('404 handler', () => {
   it('returns 404 for unknown routes', async () => {
@@ -232,3 +311,4 @@ describe('404 handler', () => {
     assert.equal(res.body.error.code, 'NOT_FOUND');
   });
 });
+

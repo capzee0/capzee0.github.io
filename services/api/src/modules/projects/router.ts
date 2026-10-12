@@ -23,8 +23,11 @@ import {
   generateSRT,
   generateVTT,
   generatePlainText,
+  generateASS,
   Transcript,
 } from '@capzee/contracts';
+import { validateMediaFile, probeMediaMetadata } from './media-validator.js';
+import { getStorageProvider } from '../../providers/storage/index.js';
 
 export const projectsRouter = Router();
 
@@ -112,7 +115,7 @@ projectsRouter.delete('/:projectId', (req: Request, res: Response, next: NextFun
 projectsRouter.post(
   '/:projectId/media',
   upload.single('file'),
-  (req: Request, res: Response, next: NextFunction) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     try {
       const projectId = req.params.projectId as string;
       const project = getProject(projectId);
@@ -122,18 +125,78 @@ projectsRouter.post(
         return next(createError('No file provided in form-data "file" field', 400, 'NO_FILE_PROVIDED'));
       }
 
-      const filePath = path.resolve(req.file.path);
-      const updated = updateProject(projectId, {
-        originalAssetPath: filePath,
-        status: 'ready',
+      const tempPath = path.resolve(req.file.path);
+
+      // Validate media file container and magic bytes
+      const validation = await validateMediaFile(tempPath);
+      if (!validation.valid) {
+        try {
+          if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
+        } catch {
+          // ignore cleanup error
+        }
+        return next(createError(validation.error || 'Invalid media file format', 400, 'INVALID_MEDIA_TYPE'));
+      }
+
+      // Probe duration and dimensions if available
+      const metadata = await probeMediaMetadata(tempPath);
+
+      // Save via storage provider
+      const storage = getStorageProvider();
+      const stored = await storage.saveFile({
+        sourcePath: tempPath,
+        originalName: req.file.originalname,
+        mimeType: validation.mimeType,
+        destinationSubdir: projectId,
       });
 
-      res.status(200).json({ success: true, data: updated });
+      const updated = updateProject(projectId, {
+        originalAssetPath: stored.storedPath,
+        status: 'ready',
+        ...(metadata.duration ? { duration: metadata.duration } : {}),
+      });
+
+      res.status(200).json({
+        success: true,
+        data: {
+          ...updated,
+          mediaMetadata: metadata,
+          publicUrl: stored.publicUrl,
+        },
+      });
     } catch (err) {
       next(err);
     }
   }
 );
+
+// POST /projects/:projectId/upload-intent (Direct-to-cloud signed URL)
+projectsRouter.post('/:projectId/upload-intent', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const projectId = req.params.projectId as string;
+    const project = getProject(projectId);
+    if (!project) return next(createError('Project not found', 404, 'PROJECT_NOT_FOUND'));
+
+    const { filename = 'video.mp4', mimeType = 'video/mp4' } = req.body;
+    const storage = getStorageProvider();
+
+    if (storage.createSignedUploadUrl) {
+      const signed = await storage.createSignedUploadUrl({ filename, mimeType });
+      return res.json({ success: true, data: signed });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        uploadUrl: `/api/v1/projects/${projectId}/media`,
+        fileKey: `${projectId}-${filename}`,
+        expiresInSeconds: 3600,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
 
 // GET /projects/:projectId/media
 projectsRouter.get('/:projectId/media', (req: Request, res: Response, next: NextFunction) => {
@@ -177,10 +240,12 @@ projectsRouter.post('/:projectId/render', async (req: Request, res: Response, ne
     const outputFileName = `${project.id}-rendered-${Date.now()}.mp4`;
     const outputPath = path.join(EXPORT_DIR, outputFileName);
 
-    const workerScript = path.resolve(
-      __dirname,
-      '../../../../ai-worker/capzee_worker/scripts/render_cli.py'
-    );
+    const possibleWorkerPaths = [
+      path.resolve(__dirname, '../../../../ai-worker/capzee_worker/scripts/render_cli.py'),
+      path.resolve(process.cwd(), 'services/ai-worker/capzee_worker/scripts/render_cli.py'),
+      path.resolve(process.cwd(), '../ai-worker/capzee_worker/scripts/render_cli.py'),
+    ];
+    const workerScript = possibleWorkerPaths.find((p) => fs.existsSync(p)) || possibleWorkerPaths[0];
     const pythonBin = process.env.PYTHON_PATH ?? 'python';
 
     const args = [
@@ -330,6 +395,21 @@ projectsRouter.get('/:projectId/export', (req: Request, res: Response, next: Nex
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
       res.setHeader('Content-Disposition', `attachment; filename="${project.title || 'transcript'}.json"`);
       return res.json(transcript);
+    }
+
+    if (format === 'ass') {
+      let style = {};
+      if (req.query.style) {
+        try {
+          style = JSON.parse(String(req.query.style));
+        } catch {
+          // ignore invalid style query parameter
+        }
+      }
+      const ass = generateASS(transcript, style);
+      res.setHeader('Content-Type', 'text/x-ssa; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="${project.title || 'captions'}.ass"`);
+      return res.send(ass);
     }
 
     return next(createError(`Unsupported export format: ${format}`, 400, 'INVALID_FORMAT'));

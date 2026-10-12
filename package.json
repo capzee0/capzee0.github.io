@@ -20,6 +20,9 @@
     "lint": "npm run lint --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
+    "test:worker": "python -m pytest services/ai-worker/tests",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
     "format": "prettier --write \"**/*.{ts,tsx,js,json,md}\" --ignore-path .gitignore",
     "clean": "rimraf apps/*/dist apps/*/node_modules services/*/dist services/*/node_modules packages/*/dist node_modules"
   },

@@ -13,6 +13,9 @@ import {
   generateSRT,
   generateVTT,
   generatePlainText,
+  generateASS,
+  formatASSTime,
+  hexToASSColor,
   parseSRT,
   parseVTT,
 } from '../dist/index.js';
@@ -232,6 +235,44 @@ describe('Contracts — CapCut-Style Caption Preset Catalogue', () => {
     assert.ok(categories.has('karaoke'), 'Should have karaoke presets');
     assert.ok(categories.has('editorial'), 'Should have editorial presets');
     assert.ok(categories.has('minimal'), 'Should have minimal presets');
+  });
+});
+
+describe('Contracts — ASS Subtitle Generation', () => {
+  it('formats centisecond ASS timestamps properly', () => {
+    assert.equal(formatASSTime(0), '0:00:00.00');
+    assert.equal(formatASSTime(1.5), '0:00:01.50');
+    assert.equal(formatASSTime(65.25), '0:01:05.25');
+  });
+
+  it('converts hex colors to ASS &HAABBGGRR correctly', () => {
+    assert.equal(hexToASSColor('#FFFFFF'), '&H00FFFFFF');
+    assert.equal(hexToASSColor('#FF0000'), '&H000000FF');
+    assert.equal(hexToASSColor('#FACC15'), '&H0015CCFA');
+  });
+
+  it('generates full ASS script content with styles and dialogue events', () => {
+    const transcript = {
+      schemaVersion: 1,
+      language: 'en',
+      segments: [
+        {
+          id: 'seg-1',
+          start: 0,
+          end: 2,
+          text: 'Hello CapZee',
+          words: [
+            { id: 'w-1', text: 'Hello', start: 0, end: 1 },
+            { id: 'w-2', text: 'CapZee', start: 1, end: 2 },
+          ],
+        },
+      ],
+    };
+    const ass = generateASS(transcript, { fontFamily: 'Montserrat', fontSize: 36 });
+    assert.ok(ass.includes('[Script Info]'));
+    assert.ok(ass.includes('[V4+ Styles]'));
+    assert.ok(ass.includes('Montserrat'));
+    assert.ok(ass.includes('Hello CapZee'));
   });
 });
 

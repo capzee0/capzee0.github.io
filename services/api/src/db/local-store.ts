@@ -7,6 +7,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { Project } from '@capzee/contracts';
+import { jobBus } from '../events/job-bus.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -171,6 +172,7 @@ export function createJob(data: {
   };
   jobStore.set(job.id, job);
   saveToDisk();
+  jobBus.notifyJobUpdate(job);
   return job;
 }
 
@@ -187,5 +189,6 @@ export function updateJob(
   const updated: StoredJob = { ...existing, ...updates, id: existing.id };
   jobStore.set(id, updated);
   saveToDisk();
+  jobBus.notifyJobUpdate(updated);
   return updated;
 }

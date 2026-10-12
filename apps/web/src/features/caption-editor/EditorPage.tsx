@@ -2,20 +2,28 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Download, ChevronLeft, Film, Upload, Sparkles,
-  Type, Sliders, Shield,
-  Smartphone, Monitor, Square
+  Type, Sliders, Shield, Scissors,
+  Smartphone, Monitor, Square,
+  Keyboard, CheckCircle2
 } from 'lucide-react';
 import { useProjectStore } from '@/stores/projectStore';
 import { useAuthStore } from '@/stores/authStore';
 import {
-  getProject, getTranscript, startTranscription, getJob, getMediaUrl
+  getProject, getTranscript, startTranscription, getJob, getMediaUrl, subscribeJobEvents, type RemovedClip
 } from '@/services/api';
+import {
+  ResizablePanelGroup,
+  ResizablePanel,
+  ResizableHandle,
+} from '@/components/ui/resizable';
 import { CaptionOverlay } from './components/CaptionOverlay';
 import { CaptionPresetGallery } from './components/CaptionPresetGallery';
 import { CaptionStyleControls } from './components/CaptionStyleControls';
 import { TranscriptionPanel } from './components/TranscriptionPanel';
 import { ExportModal } from './components/ExportModal';
+import { KeyboardShortcutsModal } from './components/KeyboardShortcutsModal';
 import { FluxoCutTimeline } from './components/FluxoCutTimeline';
+import { FluxoCutSilencePanel } from './components/FluxoCutSilencePanel';
 import { formatDuration, cn } from '@/lib/utils';
 import {
   type Segment,
@@ -27,7 +35,7 @@ import {
 } from '@capzee/contracts';
 
 type AspectRatio = '9:16' | '16:9' | '1:1';
-type StudioTab = 'presets' | 'transcript' | 'style';
+type StudioTab = 'presets' | 'transcript' | 'style' | 'silence';
 
 export function EditorPage() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -53,47 +61,14 @@ export function EditorPage() {
 
   // Dedicated Caption & Presets Studio UI
   const [studioTab, setStudioTab] = useState<StudioTab>('presets');
-  const [mobileTab, setMobileTab] = useState<'preview' | 'presets' | 'transcript' | 'style'>('preview');
+  const [mobileTab, setMobileTab] = useState<'preview' | 'presets' | 'transcript' | 'style' | 'silence'>('preview');
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>(
     (captionStyle?.aspectRatio as AspectRatio) || '9:16'
   );
   const [safeZone, setSafeZone] = useState(false);
 
-  // Resizable layout (Center Video Canvas vs Right Studio Panel)
-  const [rightPanelWidth, setRightPanelWidth] = useState(380);
-  const [timelineHeight, setTimelineHeight] = useState(156);
-
-  const isResizingRightPanel = useRef(false);
-  const isResizingTimeline = useRef(false);
-
-  useEffect(() => {
-    const handleMouseMove = (e: globalThis.MouseEvent) => {
-      if (isResizingRightPanel.current) {
-        const newWidth = Math.max(300, Math.min(560, window.innerWidth - e.clientX));
-        setRightPanelWidth(newWidth);
-      }
-      if (isResizingTimeline.current) {
-        const newHeight = Math.max(110, Math.min(300, window.innerHeight - e.clientY));
-        setTimelineHeight(newHeight);
-      }
-    };
-
-    const handleMouseUp = () => {
-      isResizingRightPanel.current = false;
-      isResizingTimeline.current = false;
-      document.body.style.cursor = 'default';
-      document.body.style.userSelect = 'auto';
-    };
-
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, []);
-
-  // Modals & status
+  // Resizable layout state & Modals
+  const [shortcutsModalOpen, setShortcutsModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const jobPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -446,6 +421,30 @@ export function EditorPage() {
     setActiveSegment(newSeg);
   };
 
+  const handleClipsRemoved = (clips: RemovedClip[], _totalSeconds: number) => {
+    if (!currentTranscript) return;
+    let adjustedSegments = [...currentTranscript.segments];
+    for (const clip of clips) {
+      adjustedSegments = adjustedSegments.map((seg) => {
+        if (seg.start >= clip.end) {
+          const delta = clip.duration;
+          return {
+            ...seg,
+            start: Math.max(0, Number((seg.start - delta).toFixed(2))),
+            end: Math.max(0, Number((seg.end - delta).toFixed(2))),
+            words: seg.words?.map((w) => ({
+              ...w,
+              start: Math.max(0, Number((w.start - delta).toFixed(2))),
+              end: Math.max(0, Number((w.end - delta).toFixed(2))),
+            })),
+          };
+        }
+        return seg;
+      });
+    }
+    applyTranscriptChange({ ...currentTranscript, segments: adjustedSegments });
+  };
+
   // Keyboard Shortcuts (Space, S, Delete, Ctrl+Z, Arrow keys)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -463,9 +462,18 @@ export function EditorPage() {
         return;
       }
 
-      if (e.code === 'Space') {
+      if (e.code === 'Space' || e.key === 'k' || e.key === 'K') {
         e.preventDefault();
         togglePlay();
+      } else if (e.key === 'j' || e.key === 'J') {
+        e.preventDefault();
+        seekTo(Math.max(0, currentTime - 2));
+      } else if (e.key === 'l' || e.key === 'L') {
+        e.preventDefault();
+        seekTo(Math.min(duration || 20.5, currentTime + 2));
+      } else if (e.key === '?' || (e.shiftKey && e.key === '/')) {
+        e.preventDefault();
+        setShortcutsModalOpen((prev) => !prev);
       } else if (e.key === 's' || e.key === 'S') {
         e.preventDefault();
         handleSplitSegment();
@@ -517,14 +525,42 @@ export function EditorPage() {
     if (!projectId) return;
     try {
       const { jobId } = await startTranscription(projectId, opts);
-      setCurrentJob({
+      const initialJob = {
         id: jobId,
         status: 'queued',
         progress: 0,
-        stage: null,
+        stage: 'queued',
         errorCode: null,
         errorMessage: null,
-      });
+      };
+      setCurrentJob(initialJob);
+
+      // Stream progress in real-time via SSE
+      subscribeJobEvents(jobId, (update) => {
+        updateJob({
+          status: update.status,
+          progress: update.progress,
+          stage: update.stage,
+          errorCode: update.errorCode,
+          errorMessage: update.errorMessage,
+        });
+      })
+        .then(async () => {
+          try {
+            const freshTranscript = await getTranscript(projectId);
+            if (freshTranscript) {
+              setCurrentTranscript(freshTranscript);
+            }
+          } catch {
+            // fallback
+          }
+          if (currentProject) {
+            setCurrentProject({ ...currentProject, status: 'transcribed' });
+          }
+        })
+        .catch((err) => {
+          console.warn('[EditorPage] Transcription job failed:', err);
+        });
     } catch {
       const demoTranscript = getDemoTranscript(opts.language, opts.captionOutput);
       setCurrentTranscript(demoTranscript);
@@ -566,7 +602,7 @@ export function EditorPage() {
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#D96846] text-[#2F3020] select-none font-sans">
       {/* ── 1. Top Header Bar: Capzee Theme ── */}
       <header className="h-12 flex-shrink-0 bg-[#CDCBD6] border-b border-[#2F3020]/20 px-2 sm:px-4 flex items-center justify-between z-20 text-[#2F3020] shadow-xs">
-        {/* Left: Back & Project Title */}
+        {/* Left: Back, Project Title & Autosave Badge */}
         <div className="flex items-center gap-1.5 sm:gap-3 min-w-0">
           <button
             onClick={() => navigate('/dashboard')}
@@ -587,6 +623,11 @@ export function EditorPage() {
             <span className="hidden xs:inline-block text-[9px] sm:text-[10px] text-[#16A34A] bg-[#16A34A]/10 border border-[#16A34A]/25 font-mono font-bold px-1.5 sm:px-2 py-0.5 rounded-full flex-shrink-0">
               {formatDuration(duration || 20.5)}
             </span>
+            {/* Autosave Status Pill */}
+            <div className="hidden sm:flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#16A34A]/10 border border-[#16A34A]/25 text-[#16A34A] text-[9.5px] font-bold">
+              <CheckCircle2 className="w-3 h-3 text-[#16A34A]" />
+              <span>Saved</span>
+            </div>
           </div>
         </div>
 
@@ -644,8 +685,18 @@ export function EditorPage() {
           </button>
         </div>
 
-        {/* Right: Safe Zone Toggle & Primary Export Button */}
-        <div className="flex items-center gap-1.5 sm:gap-2.5">
+        {/* Right: Keyboard Shortcuts Guide, Safe Zone Toggle & Primary Export Button */}
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          {/* Shortcuts Guide Button (?) */}
+          <button
+            onClick={() => setShortcutsModalOpen(true)}
+            className="p-1.5 sm:px-2 sm:py-1.5 rounded-lg transition-all text-xs font-semibold flex items-center gap-1 cursor-pointer bg-[#FAF7F5] text-[#2F3020] border border-[#2F3020]/15 hover:bg-white"
+            title="Keyboard Shortcuts Guide (?)"
+          >
+            <Keyboard className="w-3.5 h-3.5 text-[#2F3020]/80" />
+            <span className="hidden xl:inline text-[11px] font-bold">Shortcuts</span>
+          </button>
+
           {/* Safe Zone Boundary Guide */}
           <button
             onClick={() => setSafeZone(!safeZone)}
@@ -659,6 +710,16 @@ export function EditorPage() {
           >
             <Shield className="w-3.5 h-3.5" />
             <span className="hidden lg:inline text-[11px]">Safe Zone</span>
+          </button>
+
+          {/* Social Posts Generator Navigation */}
+          <button
+            onClick={() => navigate(`/social-captions/${projectId}`)}
+            className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-lg transition-all text-xs font-semibold flex items-center gap-1.5 cursor-pointer bg-[#FAF7F5] text-[#2F3020] border border-[#2F3020]/15 hover:bg-white hover:text-[#D96846]"
+            title="Generate AI Social Media Captions, Hooks & Hashtags"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-[#D96846]" />
+            <span className="hidden lg:inline text-[11px] font-bold">Social Posts</span>
           </button>
 
           {/* Primary Export Action */}
@@ -750,253 +811,394 @@ export function EditorPage() {
             <Sliders className="w-3.5 h-3.5 flex-shrink-0" />
             <span>Style</span>
           </button>
+          <button
+            onClick={() => { setMobileTab('silence'); setStudioTab('silence'); }}
+            className={cn(
+              "flex-1 py-1 px-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer truncate",
+              mobileTab === 'silence'
+                ? "bg-[#16A34A] text-white shadow-xs"
+                : "text-[#2F3020]/75 hover:text-[#2F3020]"
+            )}
+          >
+            <Scissors className="w-3.5 h-3.5 flex-shrink-0" />
+            <span>Silence</span>
+          </button>
         </div>
       </div>
 
-      {/* ── 2. Main Studio Workspace: Center Video Player + Right Caption & Preset Studio ── */}
-      <div className="flex-1 flex overflow-hidden min-h-0">
-        {/* Center: Video Player Canvas (Terracotta Studio Background) */}
-        <main className={cn(
-          "flex-1 bg-[#D96846] relative flex flex-col items-center justify-center p-2 sm:p-3 overflow-hidden min-w-0 min-h-0",
-          mobileTab !== 'preview' ? "hidden lg:flex" : "flex"
-        )}>
-          {/* Subtle dotted organic studio grid */}
-          <div
-            className="absolute inset-0 opacity-15 pointer-events-none"
-            style={{
-              backgroundImage: 'radial-gradient(#2F3020 1px, transparent 1px)',
-              backgroundSize: '24px 24px',
-            }}
-          />
-
-          {/* Video Container (Responsive aspect frame) */}
-          <div className="flex-1 w-full min-h-0 flex items-center justify-center relative overflow-hidden py-1">
-            <div
-              className={cn(
-                "relative bg-black rounded-2xl overflow-hidden border-2 border-[#2F3020]/30 shadow-2xl flex items-center justify-center select-none max-h-full",
-                aspectRatio === '9:16' && "h-full max-h-[92%] aspect-[9/16] w-auto",
-                aspectRatio === '16:9' && "w-[94%] max-w-[800px] aspect-[16/9] max-h-full",
-                aspectRatio === '1:1' && "h-full max-h-[92%] aspect-square w-auto"
-              )}
-            >
-              {videoSrc ? (
-                <>
-                  <video
-                    ref={videoRef}
-                    src={videoSrc}
-                    playsInline
-                    crossOrigin="anonymous"
-                    className="w-full h-full object-contain bg-black"
-                    onError={() => {
-                      console.warn("Video failed to play from source:", videoSrc);
-                    }}
-                  />
-
-                  {/* Animated CapCut Captions Overlay */}
-                  {activeSegment && (
-                    <CaptionOverlay
-                      segment={activeSegment}
-                      activeWordIndex={activeWordIndex}
-                      style={captionStyle}
-                      onPositionChange={(offsetY) =>
-                        setCaptionStyle({
-                          position: { ...captionStyle.position, offsetY },
-                        })
-                      }
-                    />
-                  )}
-
-                  {/* Safe Zone Overlay */}
-                  {safeZone && (
-                    <div className="absolute inset-0 pointer-events-none border-2 border-dashed border-[#16A34A] flex flex-col justify-between p-4 z-40">
-                      <span className="text-[10px] font-mono text-white bg-[#16A34A] px-2 py-0.5 rounded-md self-start font-bold shadow-md">
-                        Safe Zone Top
-                      </span>
-                      <span className="text-[10px] font-mono text-white bg-[#16A34A] px-2 py-0.5 rounded-md self-end font-bold shadow-md">
-                        Reels / TikTok UI Safe Zone
-                      </span>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <div className="flex flex-col items-center text-center p-8 text-[#2F3020] bg-[#CDCBD6] rounded-2xl border border-[#2F3020]/20 max-w-sm shadow-md">
-                  <div className="w-14 h-14 rounded-2xl bg-[#16A34A]/10 border border-[#16A34A]/25 flex items-center justify-center text-[#16A34A] mb-3 shadow-inner">
-                    <Film className="w-7 h-7" />
-                  </div>
-                  <p className="text-sm font-bold text-[#2F3020] mb-1">No Video Loaded</p>
-                  <p className="text-xs text-[#2F3020]/70 mb-5 leading-relaxed">
-                    Upload your video clip to start applying animated CapCut caption presets.
-                  </p>
-                  <label className="bg-[#16A34A] hover:bg-[#15803D] text-white text-xs py-2.5 px-5 rounded-xl font-bold shadow-md cursor-pointer flex items-center gap-2 transition-all hover:scale-[1.02] active:scale-[0.98]">
-                    <Upload className="w-3.5 h-3.5" />
-                    Select Video File
-                    <input
-                      type="file"
-                      accept="video/mp4,video/quicktime,video/webm"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          setLocalVideoFile(file);
-                          setVideoSrc(URL.createObjectURL(file));
-                        }
-                      }}
-                    />
-                  </label>
-                </div>
-              )}
+      {/* ── 2. DESKTOP 3-PANE STUDIO LAYOUT (Left: Presets | Center: Video + Timeline | Right: Inspector) ── */}
+      <div className="hidden lg:flex flex-1 overflow-hidden min-h-0">
+        <ResizablePanelGroup direction="horizontal" className="h-full w-full">
+          {/* ── LEFT PANE: Media & Preset Library ── */}
+          <ResizablePanel
+            defaultSize={22}
+            minSize={16}
+            maxSize={32}
+            id="left-pane"
+            collapsible
+            className="bg-[#CDCBD6] border-r border-[#2F3020]/20 flex flex-col overflow-hidden text-[#2F3020]"
+          >
+            <div className="p-2.5 border-b border-[#2F3020]/15 bg-[#CDCBD6] flex items-center justify-between flex-shrink-0">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-[#2F3020]">
+                <Sparkles className="w-3.5 h-3.5 text-[#16A34A]" />
+                <span>Preset Gallery</span>
+              </div>
+              <span className="text-[10px] font-bold text-[#16A34A] bg-[#16A34A]/10 px-1.5 py-0.5 rounded-full border border-[#16A34A]/20 font-mono">
+                Viral Styles
+              </span>
             </div>
-          </div>
-        </main>
-
-        {/* Drag resize handle for Right Studio Panel */}
-        <div
-          onMouseDown={(e) => {
-            e.preventDefault();
-            isResizingRightPanel.current = true;
-            document.body.style.cursor = 'col-resize';
-            document.body.style.userSelect = 'none';
-          }}
-          className="hidden lg:block w-1 hover:w-1.5 bg-[#2F3020]/15 hover:bg-[#16A34A] active:bg-[#16A34A] cursor-col-resize transition-all flex-shrink-0 z-20 border-l border-[#2F3020]/10"
-          title="Drag to resize studio panel"
-        />
-
-        {/* Right: Dedicated Caption & Presets Command Center in Lavender Neutral */}
-        <aside
-          style={{ '--panel-w': `${rightPanelWidth}px` } as React.CSSProperties}
-          className={cn(
-            "bg-[#CDCBD6] border-l border-[#2F3020]/20 flex flex-col overflow-hidden text-[#2F3020] flex-shrink-0",
-            mobileTab === 'preview' ? "hidden lg:flex" : "flex flex-1 lg:flex-none",
-            "w-full lg:w-[var(--panel-w,380px)]"
-          )}
-        >
-          {/* Top 3-Way Tabs: Presets | Captions | Customize */}
-          <div className="p-2.5 border-b border-[#2F3020]/15 bg-[#CDCBD6] flex-shrink-0">
-            <div className="flex bg-[#FAF7F5] p-1 rounded-xl border border-[#2F3020]/15 gap-1 shadow-2xs">
-              <button
-                onClick={() => setStudioTab('presets')}
-                className={cn(
-                  "flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer truncate",
-                  studioTab === 'presets'
-                    ? "bg-[#16A34A] text-white shadow-xs"
-                    : "text-[#2F3020]/75 hover:text-[#2F3020] hover:bg-black/5"
-                )}
-              >
-                <Sparkles className="w-3.5 h-3.5 flex-shrink-0" />
-                <span>Presets</span>
-              </button>
-
-              <button
-                onClick={() => setStudioTab('transcript')}
-                className={cn(
-                  "flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer truncate",
-                  studioTab === 'transcript'
-                    ? "bg-[#16A34A] text-white shadow-xs"
-                    : "text-[#2F3020]/75 hover:text-[#2F3020] hover:bg-black/5"
-                )}
-              >
-                <Type className="w-3.5 h-3.5 flex-shrink-0" />
-                <span>Captions</span>
-              </button>
-
-              <button
-                onClick={() => setStudioTab('style')}
-                className={cn(
-                  "flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer truncate",
-                  studioTab === 'style'
-                    ? "bg-[#16A34A] text-white shadow-xs"
-                    : "text-[#2F3020]/75 hover:text-[#2F3020] hover:bg-black/5"
-                )}
-              >
-                <Sliders className="w-3.5 h-3.5 flex-shrink-0" />
-                <span>Style</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Studio Panel Body */}
-          <div className="flex-1 overflow-y-auto p-3">
-            {/* Tab 1: 31 CapCut Animated Presets */}
-            {studioTab === 'presets' && (
+            <div className="flex-1 overflow-y-auto p-2.5">
               <CaptionPresetGallery
                 selectedPresetId={captionStyle.id}
                 onSelectPreset={handleSelectPreset}
               />
-            )}
+            </div>
+          </ResizablePanel>
 
-            {/* Tab 2: Word & Segment Editor */}
-            {studioTab === 'transcript' && (
-              <TranscriptionPanel
-                transcript={currentTranscript}
-                currentJob={currentJob}
-                activeSegment={activeSegment}
+          <ResizableHandle withHandle />
+
+          {/* ── CENTER PANE: Video Canvas & Scrubber Timeline ── */}
+          <ResizablePanel
+            defaultSize={52}
+            minSize={36}
+            id="center-pane"
+            className="flex flex-col min-w-0 min-h-0"
+          >
+            <ResizablePanelGroup direction="vertical" className="h-full w-full">
+              {/* Top: Video Player Canvas */}
+              <ResizablePanel
+                defaultSize={68}
+                minSize={40}
+                id="center-video"
+                className="bg-[#D96846] relative flex flex-col items-center justify-center p-2 sm:p-3 overflow-hidden min-w-0 min-h-0"
+              >
+                {/* Subtle dotted organic studio grid */}
+                <div
+                  className="absolute inset-0 opacity-15 pointer-events-none"
+                  style={{
+                    backgroundImage: 'radial-gradient(#2F3020 1px, transparent 1px)',
+                    backgroundSize: '24px 24px',
+                  }}
+                />
+
+                {/* Video Container (Responsive aspect frame) */}
+                <div className="flex-1 w-full min-h-0 flex items-center justify-center relative overflow-hidden py-1">
+                  <div
+                    className={cn(
+                      "relative bg-black rounded-2xl overflow-hidden border-2 border-[#2F3020]/30 shadow-2xl flex items-center justify-center select-none max-h-full",
+                      aspectRatio === '9:16' && "h-full max-h-[92%] aspect-[9/16] w-auto",
+                      aspectRatio === '16:9' && "w-[94%] max-w-[800px] aspect-[16/9] max-h-full",
+                      aspectRatio === '1:1' && "h-full max-h-[92%] aspect-square w-auto"
+                    )}
+                  >
+                    {videoSrc ? (
+                      <>
+                        <video
+                          ref={videoRef}
+                          src={videoSrc}
+                          playsInline
+                          crossOrigin="anonymous"
+                          className="w-full h-full object-contain bg-black"
+                          onError={() => {
+                            console.warn("Video failed to play from source:", videoSrc);
+                          }}
+                        />
+
+                        {/* Animated CapCut Captions Overlay */}
+                        {activeSegment && (
+                          <CaptionOverlay
+                            segment={activeSegment}
+                            activeWordIndex={activeWordIndex}
+                            style={captionStyle}
+                            onPositionChange={(offsetY) =>
+                              setCaptionStyle({
+                                position: { ...captionStyle.position, offsetY },
+                              })
+                            }
+                          />
+                        )}
+
+                        {/* Safe Zone Overlay */}
+                        {safeZone && (
+                          <div className="absolute inset-0 pointer-events-none border-2 border-dashed border-[#16A34A] flex flex-col justify-between p-4 z-40">
+                            <span className="text-[10px] font-mono text-white bg-[#16A34A] px-2 py-0.5 rounded-md self-start font-bold shadow-md">
+                              Safe Zone Top
+                            </span>
+                            <span className="text-[10px] font-mono text-white bg-[#16A34A] px-2 py-0.5 rounded-md self-end font-bold shadow-md">
+                              Reels / TikTok UI Safe Zone
+                            </span>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="flex flex-col items-center text-center p-8 text-[#2F3020] bg-[#CDCBD6] rounded-2xl border border-[#2F3020]/20 max-w-sm shadow-md">
+                        <div className="w-14 h-14 rounded-2xl bg-[#16A34A]/10 border border-[#16A34A]/25 flex items-center justify-center text-[#16A34A] mb-3 shadow-inner">
+                          <Film className="w-7 h-7" />
+                        </div>
+                        <p className="text-sm font-bold text-[#2F3020] mb-1">No Video Loaded</p>
+                        <p className="text-xs text-[#2F3020]/70 mb-5 leading-relaxed">
+                          Upload your video clip to start applying animated CapCut caption presets.
+                        </p>
+                        <label className="bg-[#16A34A] hover:bg-[#15803D] text-white text-xs py-2.5 px-5 rounded-xl font-bold shadow-md cursor-pointer flex items-center gap-2 transition-all hover:scale-[1.02] active:scale-[0.98]">
+                          <Upload className="w-3.5 h-3.5" />
+                          Select Video File
+                          <input
+                            type="file"
+                            accept="video/mp4,video/quicktime,video/webm"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                setLocalVideoFile(file);
+                                setVideoSrc(URL.createObjectURL(file));
+                              }
+                            }}
+                          />
+                        </label>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </ResizablePanel>
+
+              <ResizableHandle withHandle />
+
+              {/* Bottom Multi-Track Subtitle Timeline */}
+              <ResizablePanel
+                defaultSize={32}
+                minSize={20}
+                id="center-timeline"
+                className="bg-[#CDCBD6] border-t border-[#2F3020]/25 flex flex-col overflow-hidden"
+              >
+                <FluxoCutTimeline
+                  currentTime={currentTime}
+                  duration={duration}
+                  playing={playing}
+                  onSeek={seekTo}
+                  onTogglePlay={togglePlay}
+                  onSkipBack={() => seekTo(Math.max(0, currentTime - 1))}
+                  onSkipForward={() => seekTo(Math.min(duration || 20.5, currentTime + 1))}
+                  videoElement={videoRef.current}
+                  transcript={currentTranscript}
+                  activeSegment={activeSegment}
+                  onSplit={handleSplitSegment}
+                  onDelete={handleDeleteSegment}
+                  onUndo={handleUndo}
+                  onRedo={handleRedo}
+                  canUndo={history.past.length > 0}
+                  canRedo={history.future.length > 0}
+                  onSelectSegment={(seg) => setActiveSegment(seg)}
+                  onUpdateSegmentTime={handleUpdateSegmentTime}
+                />
+              </ResizablePanel>
+            </ResizablePanelGroup>
+          </ResizablePanel>
+
+          <ResizableHandle withHandle />
+
+          {/* ── RIGHT PANE: Inspector (Captions & Style Customization) ── */}
+          <ResizablePanel
+            defaultSize={26}
+            minSize={20}
+            maxSize={38}
+            id="right-pane"
+            collapsible
+            className="bg-[#CDCBD6] border-l border-[#2F3020]/20 flex flex-col overflow-hidden text-[#2F3020]"
+          >
+            {/* Top Tabs: Captions | Style */}
+            <div className="p-2.5 border-b border-[#2F3020]/15 bg-[#CDCBD6] flex-shrink-0">
+              <div className="flex bg-[#FAF7F5] p-1 rounded-xl border border-[#2F3020]/15 gap-1 shadow-2xs">
+                <button
+                  onClick={() => setStudioTab('transcript')}
+                  className={cn(
+                    "flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer truncate",
+                    studioTab === 'transcript'
+                      ? "bg-[#16A34A] text-white shadow-xs"
+                      : "text-[#2F3020]/75 hover:text-[#2F3020] hover:bg-black/5"
+                  )}
+                >
+                  <Type className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span>Captions</span>
+                </button>
+
+                <button
+                  onClick={() => setStudioTab('style')}
+                  className={cn(
+                    "flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer truncate",
+                    studioTab === 'style'
+                      ? "bg-[#16A34A] text-white shadow-xs"
+                      : "text-[#2F3020]/75 hover:text-[#2F3020] hover:bg-black/5"
+                  )}
+                >
+                  <Sliders className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span>Style</span>
+                </button>
+
+                <button
+                  onClick={() => setStudioTab('silence')}
+                  className={cn(
+                    "flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer truncate",
+                    studioTab === 'silence'
+                      ? "bg-[#16A34A] text-white shadow-xs"
+                      : "text-[#2F3020]/75 hover:text-[#2F3020] hover:bg-black/5"
+                  )}
+                >
+                  <Scissors className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span>Silence</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Right Inspector Body */}
+            <div className="flex-1 overflow-y-auto p-3">
+              {studioTab === 'transcript' && (
+                <TranscriptionPanel
+                  transcript={currentTranscript}
+                  currentJob={currentJob}
+                  activeSegment={activeSegment}
+                  onSeek={seekTo}
+                  onTranscriptChange={applyTranscriptChange}
+                  onStartTranscription={handleStartTranscription}
+                  hasVideo={Boolean(videoSrc || localVideoFile || currentProject?.localVideoUrl || currentProject?.originalAssetPath)}
+                  onSplitSegment={handleSplitSegment}
+                  onDeleteSegment={handleDeleteSegment}
+                  onMergeSegment={handleMergeSegment}
+                  onAddSegment={handleAddSegment}
+                />
+              )}
+
+              {studioTab === 'style' && (
+                <CaptionStyleControls
+                  captionStyle={captionStyle}
+                  onChange={handleStyleChange}
+                />
+              )}
+
+              {studioTab === 'silence' && (
+                <FluxoCutSilencePanel
+                  projectId={projectId!}
+                  onClipsRemoved={handleClipsRemoved}
+                />
+              )}
+            </div>
+          </ResizablePanel>
+        </ResizablePanelGroup>
+      </div>
+
+      {/* ── MOBILE / TABLET WORKSPACE FALLBACK (< lg) ── */}
+      <div className="lg:hidden flex-1 flex flex-col overflow-hidden min-h-0">
+        {mobileTab === 'preview' && (
+          <div className="flex-1 flex flex-col overflow-hidden min-h-0">
+            <div className="flex-1 bg-[#D96846] relative flex items-center justify-center p-2 overflow-hidden">
+              <div
+                className={cn(
+                  "relative bg-black rounded-2xl overflow-hidden border border-[#2F3020]/30 shadow-xl flex items-center justify-center",
+                  aspectRatio === '9:16' && "h-full aspect-[9/16]",
+                  aspectRatio === '16:9' && "w-full aspect-[16/9]",
+                  aspectRatio === '1:1' && "h-full aspect-square"
+                )}
+              >
+                {videoSrc && (
+                  <>
+                    <video
+                      ref={videoRef}
+                      src={videoSrc}
+                      playsInline
+                      crossOrigin="anonymous"
+                      className="w-full h-full object-contain"
+                    />
+                    {activeSegment && (
+                      <CaptionOverlay
+                        segment={activeSegment}
+                        activeWordIndex={activeWordIndex}
+                        style={captionStyle}
+                        onPositionChange={(offsetY) =>
+                          setCaptionStyle({
+                            position: { ...captionStyle.position, offsetY },
+                          })
+                        }
+                      />
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+            <div className="h-44 bg-[#CDCBD6] border-t border-[#2F3020]/20 flex flex-col flex-shrink-0">
+              <FluxoCutTimeline
+                currentTime={currentTime}
+                duration={duration}
+                playing={playing}
                 onSeek={seekTo}
-                onTranscriptChange={applyTranscriptChange}
-                onStartTranscription={handleStartTranscription}
-                hasVideo={Boolean(videoSrc || localVideoFile || currentProject?.localVideoUrl || currentProject?.originalAssetPath)}
-                onSplitSegment={handleSplitSegment}
-                onDeleteSegment={handleDeleteSegment}
-                onMergeSegment={handleMergeSegment}
-                onAddSegment={handleAddSegment}
+                onTogglePlay={togglePlay}
+                onSkipBack={() => seekTo(Math.max(0, currentTime - 1))}
+                onSkipForward={() => seekTo(Math.min(duration || 20.5, currentTime + 1))}
+                videoElement={videoRef.current}
+                transcript={currentTranscript}
+                activeSegment={activeSegment}
+                onSplit={handleSplitSegment}
+                onDelete={handleDeleteSegment}
+                onUndo={handleUndo}
+                onRedo={handleRedo}
+                canUndo={history.past.length > 0}
+                canRedo={history.future.length > 0}
+                onSelectSegment={(seg) => setActiveSegment(seg)}
+                onUpdateSegmentTime={handleUpdateSegmentTime}
               />
-            )}
-
-            {/* Tab 3: Detailed Style & Typography Controls */}
-            {studioTab === 'style' && (
-              <CaptionStyleControls
-                captionStyle={captionStyle}
-                onChange={handleStyleChange}
-              />
-            )}
+            </div>
           </div>
-        </aside>
-      </div>
-
-      {/* ── 3. Bottom Multi-Track Subtitle Timeline in Lavender Neutral ── */}
-      <div
-        style={{ height: `${timelineHeight}px` }}
-        className={cn(
-          "flex-shrink-0 flex flex-col relative bg-[#CDCBD6] border-t border-[#2F3020]/25 shadow-lg select-none text-[#2F3020] overflow-hidden",
-          mobileTab !== 'preview' && "hidden lg:flex"
         )}
-      >
-        {/* Resize handle */}
-        <div
-          onMouseDown={(e) => {
-            e.preventDefault();
-            isResizingTimeline.current = true;
-            document.body.style.cursor = 'row-resize';
-            document.body.style.userSelect = 'none';
-          }}
-          className="absolute -top-1.5 left-0 right-0 h-3 cursor-row-resize z-30 flex items-center justify-center group"
-          title="Drag to resize timeline"
-        >
-          <div className="w-16 h-1 rounded-full bg-[#2F3020]/35 group-hover:bg-[#16A34A] group-hover:h-1.5 transition-all shadow-xs" />
-        </div>
 
-        <div className="h-full w-full overflow-hidden flex flex-col">
-          <FluxoCutTimeline
-            currentTime={currentTime}
-            duration={duration}
-            playing={playing}
-            onSeek={seekTo}
-            onTogglePlay={togglePlay}
-            onSkipBack={() => seekTo(Math.max(0, currentTime - 1))}
-            onSkipForward={() => seekTo(Math.min(duration || 20.5, currentTime + 1))}
-            videoElement={videoRef.current}
-            transcript={currentTranscript}
-            activeSegment={activeSegment}
-            onSplit={handleSplitSegment}
-            onDelete={handleDeleteSegment}
-            onUndo={handleUndo}
-            onRedo={handleRedo}
-            canUndo={history.past.length > 0}
-            canRedo={history.future.length > 0}
-            onSelectSegment={(seg) => setActiveSegment(seg)}
-            onUpdateSegmentTime={handleUpdateSegmentTime}
-          />
-        </div>
+        {mobileTab === 'presets' && (
+          <div className="flex-1 overflow-y-auto p-3 bg-[#CDCBD6]">
+            <CaptionPresetGallery
+              selectedPresetId={captionStyle.id}
+              onSelectPreset={handleSelectPreset}
+            />
+          </div>
+        )}
+
+        {mobileTab === 'transcript' && (
+          <div className="flex-1 overflow-y-auto p-3 bg-[#CDCBD6]">
+            <TranscriptionPanel
+              transcript={currentTranscript}
+              currentJob={currentJob}
+              activeSegment={activeSegment}
+              onSeek={seekTo}
+              onTranscriptChange={applyTranscriptChange}
+              onStartTranscription={handleStartTranscription}
+              hasVideo={Boolean(videoSrc || localVideoFile || currentProject?.localVideoUrl || currentProject?.originalAssetPath)}
+              onSplitSegment={handleSplitSegment}
+              onDeleteSegment={handleDeleteSegment}
+              onMergeSegment={handleMergeSegment}
+              onAddSegment={handleAddSegment}
+            />
+          </div>
+        )}
+
+        {mobileTab === 'style' && (
+          <div className="flex-1 overflow-y-auto p-3 bg-[#CDCBD6]">
+            <CaptionStyleControls
+              captionStyle={captionStyle}
+              onChange={handleStyleChange}
+            />
+          </div>
+        )}
+
+        {mobileTab === 'silence' && (
+          <div className="flex-1 overflow-y-auto p-3 bg-[#CDCBD6]">
+            <FluxoCutSilencePanel
+              projectId={projectId!}
+              onClipsRemoved={handleClipsRemoved}
+            />
+          </div>
+        )}
       </div>
+
+      {/* ── Keyboard Shortcuts Guide Modal ── */}
+      <KeyboardShortcutsModal
+        isOpen={shortcutsModalOpen}
+        onClose={() => setShortcutsModalOpen(false)}
+      />
 
       {/* ── Export Modal (Burns preset styling into final MP4) ── */}
       <ExportModal
