@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, fireEvent, act, screen } from '@testing-library/react';
+import { render, fireEvent, act } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { CaptionStyleControls } from '../src/features/caption-editor/components/CaptionStyleControls';
 import { ExportModal } from '../src/features/caption-editor/components/ExportModal';
@@ -122,7 +122,7 @@ describe('Thorough Duplicate Form Field ID Audit', () => {
         isOpen={true}
         onClose={vi.fn()}
         transcript={dummyTranscript}
-        captionStyle={CAPTION_PRESETS[0]}
+        captionStyle={{ ...CAPTION_PRESETS[0], aspectRatio: '9:16' }}
         projectId="test-proj"
         videoTitle="Test Video"
       />
