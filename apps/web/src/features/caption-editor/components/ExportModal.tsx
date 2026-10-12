@@ -348,8 +348,9 @@ export function ExportModal({
                 <div className="space-y-4">
                   <div className="p-4 bg-[#FAF7F5] border border-[#2F3020]/15 rounded-xl space-y-3">
                     <div className="flex items-center justify-between">
-                      <label className="text-xs font-bold text-[#2F3020]">Render Resolution</label>
+                      <label htmlFor="export-resolution-select" className="text-xs font-bold text-[#2F3020]">Render Resolution</label>
                       <select
+                        id="export-resolution-select"
                         value={resolution}
                         onChange={(e) => setResolution(e.target.value as 'original' | '1080p' | '720p')}
                         className="text-xs py-1 px-2.5 bg-white border border-[#2F3020]/20 rounded-lg text-[#2F3020] font-semibold"

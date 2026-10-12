@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import type { CaptionStyle, CaptionPreset } from '@capzee/contracts';
 import { CAPTION_PRESETS } from '@capzee/contracts';
 import { cn } from '@/lib/utils';
@@ -6,6 +7,7 @@ import { RotateCcw } from 'lucide-react';
 interface CaptionStyleControlsProps {
   captionStyle: CaptionStyle;
   onChange: (patch: Partial<CaptionStyle>) => void;
+  idPrefix?: string;
 }
 
 const FONT_FAMILIES = [
@@ -37,7 +39,20 @@ const ANIMATION_MODES = [
 export function CaptionStyleControls({
   captionStyle,
   onChange,
+  idPrefix,
 }: CaptionStyleControlsProps) {
+  const reactId = useId();
+  const cleanReactId = reactId.replace(/[^a-zA-Z0-9_-]/g, '');
+  const baseId = idPrefix ? `${idPrefix}-ctrl` : `ctrl-${cleanReactId}`;
+  const fontId = `${baseId}-font`;
+  const weightId = `${baseId}-weight`;
+  const sizeId = `${baseId}-size`;
+  const textColorId = `${baseId}-text-color`;
+  const activeColorId = `${baseId}-active-color`;
+  const outlineWidthId = `${baseId}-outline-width`;
+  const bgId = `${baseId}-bg`;
+  const animId = `${baseId}-anim`;
+
   function handleResetToDefaults() {
     const defaultPreset = (CAPTION_PRESETS as CaptionPreset[]).find(
       (p) => p.id === captionStyle.id
@@ -91,11 +106,11 @@ export function CaptionStyleControls({
       <section className="space-y-2.5">
         <div className="grid grid-cols-1 xs:grid-cols-2 gap-2">
           <div>
-            <label className="text-xs font-bold text-[#2F3020]/90" htmlFor="ctrl-font">
+            <label className="text-xs font-bold text-[#2F3020]/90" htmlFor={fontId}>
               Font Family
             </label>
             <select
-              id="ctrl-font"
+              id={fontId}
               value={captionStyle.fontFamily}
               onChange={(e) => onChange({ fontFamily: e.target.value })}
               className="mt-1 w-full text-xs py-2 px-2.5 bg-white border border-[#2F3020]/20 rounded-xl text-[#2F3020] font-medium focus:outline-none focus:border-[#16A34A] cursor-pointer shadow-2xs"
@@ -107,11 +122,11 @@ export function CaptionStyleControls({
           </div>
 
           <div>
-            <label className="text-xs font-bold text-[#2F3020]/90" htmlFor="ctrl-weight">
+            <label className="text-xs font-bold text-[#2F3020]/90" htmlFor={weightId}>
               Weight
             </label>
             <select
-              id="ctrl-weight"
+              id={weightId}
               value={captionStyle.fontWeight}
               onChange={(e) => onChange({ fontWeight: e.target.value as CaptionStyle['fontWeight'] })}
               className="mt-1 w-full text-xs py-2 px-2.5 bg-white border border-[#2F3020]/20 rounded-xl text-[#2F3020] font-medium focus:outline-none focus:border-[#16A34A] cursor-pointer shadow-2xs"
@@ -128,7 +143,7 @@ export function CaptionStyleControls({
         {/* Font Size */}
         <div className="bg-white p-2.5 rounded-xl border border-[#2F3020]/15 shadow-2xs">
           <div className="flex justify-between items-center mb-1.5">
-            <label className="text-xs font-bold text-[#2F3020]/90" htmlFor="ctrl-size">
+            <label className="text-xs font-bold text-[#2F3020]/90" htmlFor={sizeId}>
               Font Size
             </label>
             <span className="text-xs font-mono font-bold text-[#16A34A] bg-[#16A34A]/10 px-2 py-0.5 rounded border border-[#16A34A]/30">
@@ -136,7 +151,7 @@ export function CaptionStyleControls({
             </span>
           </div>
           <input
-            id="ctrl-size"
+            id={sizeId}
             type="range"
             min={8}
             max={64}
@@ -178,36 +193,41 @@ export function CaptionStyleControls({
         <div className="grid grid-cols-1 xs:grid-cols-2 gap-2">
           <div className="flex items-center gap-2.5 bg-[#FAF7F5] p-2 rounded-lg border border-[#2F3020]/15 shadow-2xs">
             <input
+              id={textColorId}
               type="color"
               value={captionStyle.textColor}
               onChange={(e) => onChange({ textColor: e.target.value })}
               className="w-7 h-7 rounded cursor-pointer border-0 bg-transparent"
+              aria-label="Text fill color"
             />
-            <div className="text-[11px] leading-tight">
+            <label htmlFor={textColorId} className="text-[11px] leading-tight cursor-pointer">
               <p className="font-bold text-[#2F3020]">Text Fill</p>
               <span className="font-mono text-[#2F3020]/50 text-[10px] uppercase">{captionStyle.textColor}</span>
-            </div>
+            </label>
           </div>
 
           <div className="flex items-center gap-2.5 bg-[#FAF7F5] p-2 rounded-lg border border-[#2F3020]/15 shadow-2xs">
             <input
+              id={activeColorId}
               type="color"
               value={captionStyle.activeWordColor}
               onChange={(e) => onChange({ activeWordColor: e.target.value })}
               className="w-7 h-7 rounded cursor-pointer border-0 bg-transparent"
+              aria-label="Active word color"
             />
-            <div className="text-[11px] leading-tight">
+            <label htmlFor={activeColorId} className="text-[11px] leading-tight cursor-pointer">
               <p className="font-bold text-[#16A34A]">Active Word</p>
               <span className="font-mono text-[#2F3020]/50 text-[10px] uppercase">{captionStyle.activeWordColor}</span>
-            </div>
+            </label>
           </div>
         </div>
 
         {/* Outline width */}
         <div className="pt-2 border-t border-[#2F3020]/10 flex items-center justify-between gap-2">
-          <label className="text-xs font-semibold text-[#2F3020]/80">Stroke Outline</label>
+          <label htmlFor={outlineWidthId} className="text-xs font-semibold text-[#2F3020]/80 cursor-pointer">Stroke Outline</label>
           <div className="flex items-center gap-2">
             <input
+              id={outlineWidthId}
               type="range"
               min={0}
               max={6}
@@ -243,11 +263,11 @@ export function CaptionStyleControls({
 
       {/* Background Style */}
       <section className="space-y-1.5">
-        <label className="text-xs font-bold text-[#2F3020]/90" htmlFor="ctrl-bg">
+        <label className="text-xs font-bold text-[#2F3020]/90" htmlFor={bgId}>
           Background Container
         </label>
         <select
-          id="ctrl-bg"
+          id={bgId}
           value={captionStyle.backgroundStyle}
           onChange={(e) => onChange({ backgroundStyle: e.target.value as CaptionStyle['backgroundStyle'] })}
           className="w-full text-xs py-2 px-2.5 bg-white border border-[#2F3020]/20 rounded-xl text-[#2F3020] font-medium focus:outline-none focus:border-[#16A34A] cursor-pointer shadow-2xs"
@@ -261,11 +281,11 @@ export function CaptionStyleControls({
 
       {/* Animation Timing Mode */}
       <section className="space-y-1.5">
-        <label className="text-xs font-bold text-[#2F3020]/90" htmlFor="ctrl-anim">
+        <label className="text-xs font-bold text-[#2F3020]/90" htmlFor={animId}>
           Playback Animation Sync
         </label>
         <select
-          id="ctrl-anim"
+          id={animId}
           value={captionStyle.animationMode}
           onChange={(e) => onChange({ animationMode: e.target.value as CaptionStyle['animationMode'] })}
           className="w-full text-xs py-2 px-2.5 bg-white border border-[#2F3020]/20 rounded-xl text-[#2F3020] font-medium focus:outline-none focus:border-[#16A34A] cursor-pointer shadow-2xs"

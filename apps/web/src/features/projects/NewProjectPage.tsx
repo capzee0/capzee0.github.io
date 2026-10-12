@@ -400,10 +400,10 @@ export function NewProjectPage() {
                   ? 'border-[#16A34A] bg-[#E3E1EB]'
                   : 'border-[#2F3020]/25 hover:border-[#16A34A] hover:bg-[#FAF7F5]'
               )}
-              id="video-dropzone"
+              id="video-dropzone-initial"
               aria-label="Video file drop area"
             >
-              <input {...getInputProps()} id="video-file-input" />
+              <input {...getInputProps()} id="video-file-input-initial" />
               <div className="space-y-3">
                 <div className="w-14 h-14 rounded-2xl bg-[#FAF7F5] border border-[#2F3020]/15 flex items-center justify-center mx-auto shadow-xs">
                   <FileVideo className="w-7 h-7 text-[#16A34A]" />
@@ -426,10 +426,10 @@ export function NewProjectPage() {
               <div
                 {...getRootProps()}
                 className="relative group w-full sm:w-44 h-48 sm:h-auto min-h-[225px] rounded-xl overflow-hidden bg-[#2F3020]/10 border border-[#2F3020]/20 flex-shrink-0 flex items-center justify-center cursor-pointer shadow-xs hover:border-[#16A34A] transition-all"
-                id="video-dropzone"
+                id="video-dropzone-replace"
                 title="Click or drag to change video"
               >
-                <input {...getInputProps()} id="video-file-input" />
+                <input {...getInputProps()} id="video-file-input-replace" />
 
                 {thumbnailUrl ? (
                   <>

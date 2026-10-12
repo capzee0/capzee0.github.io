@@ -311,7 +311,7 @@ export function DashboardPage() {
               <div className="absolute top-0 right-1/4 w-48 h-48 bg-[#16A34A]/8 rounded-full blur-2xl pointer-events-none" />
             )}
 
-            <input {...getInputProps()} />
+            <input {...getInputProps()} id="dashboard-video-file-input" />
 
             {selectedFile ? (
               /* Selected Video Mode: Spoken language + Indian toggle + Caption output */
@@ -339,7 +339,9 @@ export function DashboardPage() {
                   {/* Top Status & Title Row */}
                   <div className="flex items-center justify-between gap-2">
                     <input
+                      id="dashboard-project-title-input"
                       type="text"
+                      aria-label="Project title"
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
                       onClick={(e) => e.stopPropagation()}
@@ -387,6 +389,8 @@ export function DashboardPage() {
 
                       <div className="relative">
                         <select
+                          id="dashboard-language-select"
+                          aria-label="Spoken language"
                           value={language}
                           onChange={(e) => setLanguage(e.target.value)}
                           onClick={(e) => e.stopPropagation()}

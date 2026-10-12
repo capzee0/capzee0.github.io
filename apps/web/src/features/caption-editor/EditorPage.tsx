@@ -1069,6 +1069,7 @@ export function EditorPage() {
 
               {studioTab === 'style' && (
                 <CaptionStyleControls
+                  idPrefix="desktop-style"
                   captionStyle={captionStyle}
                   onChange={handleStyleChange}
                 />
@@ -1178,6 +1179,7 @@ export function EditorPage() {
         {mobileTab === 'style' && (
           <div className="flex-1 overflow-y-auto p-3 bg-[#CDCBD6]">
             <CaptionStyleControls
+              idPrefix="mobile-style"
               captionStyle={captionStyle}
               onChange={handleStyleChange}
             />
