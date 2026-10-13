@@ -51,6 +51,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install pytest pytest-asyncio pydantic
 
+      - name: Lint TypeScript Workspaces
+        run: npm run lint
+
       - name: TypeScript Typecheck
         run: npm run typecheck
 
@@ -60,5 +63,5 @@ jobs:
       - name: Run Python Worker Tests (Captions, Inspector, Renderer)
         run: python -m pytest services/ai-worker/tests/
 
-      - name: Build All Workspaces (Contracts, Web, API)
+      - name: Build All Workspaces (Contracts, Web, API, Desktop)
         run: npm run build

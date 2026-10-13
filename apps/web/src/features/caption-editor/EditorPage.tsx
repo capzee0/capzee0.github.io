@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Download, ChevronLeft, Film, Upload, Sparkles,
@@ -43,7 +43,6 @@ export function EditorPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
   const {
-    projects,
     currentProject, setCurrentProject,
     currentTranscript, setCurrentTranscript,
     captionStyle, setCaptionStyle, replaceCaptionStyle,
@@ -80,6 +79,14 @@ export function EditorPage() {
     if (!projectId) return;
 
     async function load() {
+      const {
+        projects,
+        currentProject,
+        currentTranscript,
+        localVideoFile,
+        setCurrentProject,
+        setCurrentTranscript,
+      } = useProjectStore.getState();
       setLoading(true);
       try {
         let project = currentProject?.id === projectId ? currentProject : null;
@@ -147,7 +154,7 @@ export function EditorPage() {
             setCurrentTranscript(demo);
             setActiveSegment(demo.segments[0] || null);
           }
-        } else if (!activeSegment && currentTranscript?.segments?.length) {
+        } else if (currentTranscript?.segments?.length) {
           setActiveSegment(currentTranscript.segments[0]);
         }
       } catch (err) {
@@ -239,14 +246,16 @@ export function EditorPage() {
 
   // Polling for transcription jobs
   useEffect(() => {
-    if (!currentJob || !['queued', 'processing'].includes(currentJob.status)) {
+    const activeJobId = currentJob?.id;
+    const jobStatus = currentJob?.status;
+    if (!activeJobId || !['queued', 'processing'].includes(jobStatus ?? '')) {
       if (jobPollRef.current) clearInterval(jobPollRef.current);
       return;
     }
 
     jobPollRef.current = setInterval(async () => {
       try {
-        const job = await getJob(currentJob.id);
+        const job = await getJob(activeJobId);
         updateJob(job);
 
         if (job.status === 'completed') {
@@ -273,7 +282,7 @@ export function EditorPage() {
     return () => {
       if (jobPollRef.current) clearInterval(jobPollRef.current);
     };
-  }, [currentJob?.id, currentJob?.status]);
+  }, [currentJob?.id, currentJob?.status, projectId, setCurrentTranscript, updateJob]);
 
   // ── Undo / Redo history tracking ──────────────────────────────────────────
   const [history, setHistory] = useState<{ past: Transcript[]; future: Transcript[] }>({
@@ -281,7 +290,7 @@ export function EditorPage() {
     future: [],
   });
 
-  const applyTranscriptChange = (nextTranscript: Transcript) => {
+  const applyTranscriptChange = useCallback((nextTranscript: Transcript) => {
     if (currentTranscript) {
       setHistory((prev) => ({
         past: [...prev.past.slice(-30), currentTranscript],
@@ -289,9 +298,9 @@ export function EditorPage() {
       }));
     }
     setCurrentTranscript(nextTranscript);
-  };
+  }, [currentTranscript, setCurrentTranscript]);
 
-  const handleUndo = () => {
+  const handleUndo = useCallback(() => {
     if (history.past.length === 0 || !currentTranscript) return;
     const previous = history.past[history.past.length - 1];
     const newPast = history.past.slice(0, -1);
@@ -300,9 +309,9 @@ export function EditorPage() {
       future: [currentTranscript, ...history.future],
     });
     setCurrentTranscript(previous);
-  };
+  }, [currentTranscript, history, setCurrentTranscript]);
 
-  const handleRedo = () => {
+  const handleRedo = useCallback(() => {
     if (history.future.length === 0 || !currentTranscript) return;
     const next = history.future[0];
     const newFuture = history.future.slice(1);
@@ -311,10 +320,10 @@ export function EditorPage() {
       future: newFuture,
     });
     setCurrentTranscript(next);
-  };
+  }, [currentTranscript, history, setCurrentTranscript]);
 
   // ── Subtitle Segment Operations ───────────────────────────────────────────
-  const handleSplitSegment = () => {
+  const handleSplitSegment = useCallback(() => {
     if (!currentTranscript) return;
     const targetSeg = activeSegment || currentTranscript.segments.find(
       (s) => currentTime >= s.start && currentTime <= s.end
@@ -355,9 +364,9 @@ export function EditorPage() {
     const newSegments = currentTranscript.segments.flatMap((s) => (s.id === targetSeg.id ? [seg1, seg2] : [s]));
     applyTranscriptChange({ ...currentTranscript, segments: newSegments });
     setActiveSegment(seg1);
-  };
+  }, [activeSegment, applyTranscriptChange, currentTime, currentTranscript]);
 
-  const handleDeleteSegment = (segId?: string) => {
+  const handleDeleteSegment = useCallback((segId?: string) => {
     if (!currentTranscript) return;
     const targetId = segId || activeSegment?.id || currentTranscript.segments.find(
       (s) => currentTime >= s.start && currentTime <= s.end
@@ -369,7 +378,7 @@ export function EditorPage() {
     if (activeSegment?.id === targetId) {
       setActiveSegment(null);
     }
-  };
+  }, [activeSegment, applyTranscriptChange, currentTime, currentTranscript]);
 
   const handleUpdateSegmentTime = (segId: string, newStart: number, newEnd: number) => {
     if (!currentTranscript) return;
@@ -423,7 +432,7 @@ export function EditorPage() {
     setActiveSegment(newSeg);
   };
 
-  const handleClipsRemoved = (clips: RemovedClip[], _totalSeconds: number) => {
+  const handleClipsRemoved = (clips: RemovedClip[]) => {
     if (!currentTranscript) return;
     let adjustedSegments = [...currentTranscript.segments];
     for (const clip of clips) {
@@ -446,6 +455,32 @@ export function EditorPage() {
     }
     applyTranscriptChange({ ...currentTranscript, segments: adjustedSegments });
   };
+
+  const togglePlay = useCallback(() => {
+    const video = videoRef.current;
+    if (video) {
+      if (playing) {
+        video.pause();
+      } else {
+        video.play().catch((err) => {
+          console.warn('Playback deferred / autoplay policy:', err);
+          setPlaying(false);
+        });
+      }
+    } else {
+      setPlaying((prev) => !prev);
+    }
+  }, [playing]);
+
+  const seekTo = useCallback((seconds: number) => {
+    const video = videoRef.current;
+    const maxDur = duration > 0 ? duration : (video?.duration && !isNaN(video.duration) ? video.duration : 20.5);
+    const target = Math.max(0, Math.min(seconds, maxDur));
+    setCurrentTime(target);
+    if (video) {
+      video.currentTime = target;
+    }
+  }, [duration]);
 
   // Keyboard Shortcuts (Space, S, Delete, Ctrl+Z, Arrow keys)
   useEffect(() => {
@@ -494,24 +529,20 @@ export function EditorPage() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [playing, currentTranscript, activeSegment, currentTime, history, duration]);
-
-  function togglePlay() {
-    const video = videoRef.current;
-    if (video) {
-      if (playing) {
-        video.pause();
-      } else {
-        video.play().catch((err) => {
-          console.warn('Playback deferred / autoplay policy:', err);
-          setPlaying(false);
-        });
-      }
-    } else {
-      // Virtual playback for demo mode / preview canvas without video file
-      setPlaying((prev) => !prev);
-    }
-  }
+  }, [
+    playing,
+    currentTranscript,
+    activeSegment,
+    currentTime,
+    history,
+    duration,
+    handleDeleteSegment,
+    handleRedo,
+    handleSplitSegment,
+    handleUndo,
+    seekTo,
+    togglePlay,
+  ]);
 
   // Virtual clock loop when playing in demo / virtual canvas mode (without HTML video element)
   useEffect(() => {
@@ -558,16 +589,6 @@ export function EditorPage() {
       }
     }
   }, [currentTime, videoSrc, currentTranscript]);
-
-  function seekTo(seconds: number) {
-    const video = videoRef.current;
-    const maxDur = duration > 0 ? duration : (video?.duration && !isNaN(video.duration) ? video.duration : 20.5);
-    const target = Math.max(0, Math.min(seconds, maxDur));
-    setCurrentTime(target);
-    if (video) {
-      video.currentTime = target;
-    }
-  }
 
   async function handleStartTranscription(opts: {
     language: string;

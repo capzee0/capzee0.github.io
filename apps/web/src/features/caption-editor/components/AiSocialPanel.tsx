@@ -74,7 +74,11 @@ export function AiSocialPanel({
 
   // Generate 3 High-CTR Viral Opening Hooks
   const viralHooks = useMemo(() => {
-    const t = insights.topic;
+    const alternateTopic =
+      seed > 0 ? insights.keywords[(seed - 1) % insights.keywords.length] : null;
+    const t = alternateTopic
+      ? alternateTopic.charAt(0).toUpperCase() + alternateTopic.slice(1)
+      : insights.topic;
     const kw = insights.keywords[1] || 'results';
 
     if (tone === 'viral') {
@@ -167,7 +171,7 @@ export function AiSocialPanel({
         desc: 'Vulnerable and engaging style popular on social media.',
       },
     ];
-  }, [insights, tone, seed]);
+  }, [insights, seed, tone]);
 
   // Generate platform-optimized descriptions
   const platformContent = useMemo(() => {
@@ -200,7 +204,7 @@ Effective communication requires clarity, precision, and authentic delivery.
 ${bullets}
 
 What has been your experience with ${t}? Let's discuss in the comments below.`;
-  }, [insights, platform, seed]);
+  }, [insights, platform]);
 
   // Generate hashtag pack
   const hashtags = useMemo(() => {
@@ -208,7 +212,7 @@ What has been your experience with ${t}? Let's discuss in the comments below.`;
     const custom = insights.keywords.map((k) => `#${k}`);
     const unique = Array.from(new Set([...custom, ...base]));
     return unique.slice(0, 10);
-  }, [insights, seed]);
+  }, [insights]);
 
   function copyToClipboard(text: string, identifier: string) {
     navigator.clipboard.writeText(text);

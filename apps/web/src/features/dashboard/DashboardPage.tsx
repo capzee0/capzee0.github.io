@@ -101,7 +101,13 @@ function generateVideoThumbnail(file: File): Promise<string | null> {
     let url = "";
     try { url = URL.createObjectURL(file); } catch { return resolve(null); }
     video.src = url;
-    const cleanup = () => { try { URL.revokeObjectURL(url); } catch { } };
+    const cleanup = () => {
+      try {
+        URL.revokeObjectURL(url);
+      } catch {
+        // Revoking a temporary preview URL is best-effort cleanup.
+      }
+    };
     const timeout = setTimeout(() => { cleanup(); resolve(null); }, 4000);
     video.onloadedmetadata = () => { video.currentTime = Math.min(1, video.duration > 1 ? 0.5 : 0.1); };
     video.onseeked = () => {
@@ -113,7 +119,9 @@ function generateVideoThumbnail(file: File): Promise<string | null> {
         canvas.height = Math.round((video.videoHeight || 240) * scale);
         const ctx = canvas.getContext("2d");
         if (ctx) { ctx.drawImage(video, 0, 0, canvas.width, canvas.height); cleanup(); return resolve(canvas.toDataURL("image/jpeg", 0.85)); }
-      } catch { }
+      } catch {
+        // A thumbnail is optional; keep the project usable without one.
+      }
       cleanup(); resolve(null);
     };
     video.onerror = () => { clearTimeout(timeout); cleanup(); resolve(null); };
@@ -278,7 +286,11 @@ export function DashboardPage() {
   async function confirmDelete() {
     if (!projectToDelete) return;
     const id = projectToDelete.id; setDeleting(id);
-    try { await deleteProject(id); } catch { }
+    try {
+      await deleteProject(id);
+    } catch (err) {
+      console.warn('Backend project deletion failed; removing the local project:', err);
+    }
     removeProject(id); setDeleting(null); setProjectToDelete(null);
   }
 

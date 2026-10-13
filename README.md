@@ -14,7 +14,7 @@ capzee/
 ├── packages/
 │   └── contracts/     # Shared schemas, Zod validators, presets, SRT/VTT/ASS generators
 └── services/
-    ├── api/           # Node.js + Express 5 REST API (Projects, SSE Jobs, Transcripts, Storage)
+    ├── api/           # Node.js + Express 4 REST API (Projects, SSE Jobs, Transcripts, Storage)
     └── ai-worker/     # Python 3 worker (faster-whisper, media inspection, ASS/FFmpeg render engine)
 ```
 
@@ -30,15 +30,15 @@ capzee/
 ## 🛠️ Quickstart
 
 ### Prerequisites
-- **Node.js**: v18.0.0 or later (v20+ recommended)
+- **Node.js**: v20.19.0 or later
 - **Python**: 3.9+ (Python 3.10–3.14 supported)
 - **Docker** (optional): For running PostgreSQL 16 & Redis 7 services locally.
 
 ### Installation
 
 ```bash
-# Clone and install dependencies
-npm install --ignore-scripts
+# Clone and install dependencies, including the Electron runtime used by desktop
+npm install
 ```
 
 ### Running Locally
@@ -68,7 +68,7 @@ npm run build
 
 ## 🧪 Testing & Quality Assurance
 
-Each workspace includes automated test suites with **93 passing tests**:
+Each workspace includes automated test suites with **101 passing tests**:
 
 ```bash
 # Run all Node.js and React tests across monorepo workspaces (Vitest)
@@ -79,14 +79,17 @@ npm run test:worker
 
 # Run full TypeScript typecheck
 npm run typecheck
+
+# Lint TypeScript workspace source
+npm run lint
 ```
 
 ### Test Suite Breakdown
-- **`@capzee/web`**: 28 passed tests (Dashboard, Studio, Timeline, Silence Remover, Utils)
+- **`@capzee/web`**: 36 passed tests (Dashboard, Studio, Timeline, Silence Remover, Utils, accessibility IDs)
 - **`@capzee/api`**: 26 passed tests (Projects, SSE Jobs, Transcription Fallback, Media Validation, Storage)
 - **`@capzee/contracts`**: 19 passed tests (Schemas, Presets, SRT, VTT, ASS Subtitles)
 - **`ai-worker`**: 20 passed tests (ASS Subtitle Generation, Media Inspector, Schema validation)
-- **Total**: 93 passed tests with 100% pass rate.
+- **Total**: 101 passed tests with 100% pass rate.
 
 ---
 

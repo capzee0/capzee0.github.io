@@ -153,7 +153,9 @@ function generateVideoThumbnail(file: File): Promise<string | null> {
     const cleanup = () => {
       try {
         URL.revokeObjectURL(url);
-      } catch { }
+      } catch {
+        // Revoking a temporary preview URL is best-effort cleanup.
+      }
     };
 
     const timeout = setTimeout(() => {
@@ -367,7 +369,7 @@ export function NewProjectPage() {
       setLocalVideoFile(selectedFile);
 
       navigate(`/editor/${project.id}`);
-    } catch (err) {
+    } catch {
       // If API is not reachable, create a local-only project with immediate transcription ready
       const localId = `local-${Date.now()}`;
       const now = new Date().toISOString();
