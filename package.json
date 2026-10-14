@@ -24,7 +24,8 @@
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
     "format": "prettier --write \"**/*.{ts,tsx,js,json,md}\" --ignore-path .gitignore",
-    "clean": "rimraf apps/*/dist apps/*/node_modules services/*/dist services/*/node_modules packages/*/dist node_modules"
+    "clean": "rimraf apps/*/dist apps/*/node_modules services/*/dist services/*/node_modules packages/*/dist node_modules",
+    "skills": "npx @rmyndharis/antigravity-skills"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

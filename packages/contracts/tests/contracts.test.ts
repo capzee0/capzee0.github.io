@@ -18,6 +18,12 @@ import {
   hexToASSColor,
   parseSRT,
   parseVTT,
+  SUPPORTED_TRANSCRIPTION_LANGUAGES,
+  WHISPER_MODELS,
+  getCaptionOutputMeta,
+  getDemoTranscript,
+  createApiSuccessResponse,
+  createApiErrorResponse,
 } from '../dist/index.js';
 
 describe('Contracts — Transcript Schemas', () => {
@@ -273,6 +279,53 @@ describe('Contracts — ASS Subtitle Generation', () => {
     assert.ok(ass.includes('[V4+ Styles]'));
     assert.ok(ass.includes('Montserrat'));
     assert.ok(ass.includes('Hello CapZee'));
+  });
+});
+
+describe('Contracts — Constants & Metadata Helpers', () => {
+  it('exports valid transcription languages list with auto, Tamil, and English', () => {
+    assert.ok(Array.isArray(SUPPORTED_TRANSCRIPTION_LANGUAGES));
+    const codes = SUPPORTED_TRANSCRIPTION_LANGUAGES.map((l) => l.code);
+    assert.ok(codes.includes('auto'));
+    assert.ok(codes.includes('en'));
+    assert.ok(codes.includes('ta'));
+    assert.ok(codes.includes('hi'));
+  });
+
+  it('exports valid whisper models definitions', () => {
+    assert.ok(Array.isArray(WHISPER_MODELS));
+    const ids = WHISPER_MODELS.map((m) => m.id);
+    assert.ok(ids.includes('tiny'));
+    assert.ok(ids.includes('base'));
+    assert.ok(ids.includes('large-v3'));
+  });
+
+  it('generates dynamic caption output meta for Tamil and Hindi', () => {
+    const tamilMeta = getCaptionOutputMeta('ta');
+    assert.ok(tamilMeta.romanLabel.includes('Tanglish'));
+    assert.ok(tamilMeta.nativeLabel.includes('தமிழ்'));
+
+    const hindiMeta = getCaptionOutputMeta('hi');
+    assert.ok(hindiMeta.romanLabel.includes('Hinglish'));
+    assert.ok(hindiMeta.nativeLabel.includes('हिन्दी'));
+  });
+
+  it('generates realistic demo transcript with punchy segments', () => {
+    const demo = getDemoTranscript('en');
+    assert.equal(demo.schemaVersion, 1);
+    assert.ok(demo.segments.length > 0);
+    assert.ok(demo.segments[0].words && demo.segments[0].words.length > 0);
+  });
+
+  it('creates structured API responses', () => {
+    const success = createApiSuccessResponse({ status: 'ok' });
+    assert.equal(success.success, true);
+    assert.equal(success.data.status, 'ok');
+
+    const err = createApiErrorResponse('ERR_TEST', 'Test error', 'req-123');
+    assert.equal(err.success, false);
+    assert.equal(err.error.code, 'ERR_TEST');
+    assert.equal(err.error.requestId, 'req-123');
   });
 });
 

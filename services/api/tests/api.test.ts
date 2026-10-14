@@ -312,3 +312,45 @@ describe('404 handler', () => {
   });
 });
 
+describe('Silence detection service & endpoint', () => {
+  let projectId: string;
+
+  beforeEach(async () => {
+    const res = await request(app)
+      .post('/api/v1/projects')
+      .send({ title: 'Silence Project' });
+    projectId = res.body.data.id;
+
+    const transcript = {
+      schemaVersion: 1,
+      language: 'en',
+      segments: [
+        {
+          id: 'seg-1',
+          start: 1.5, // 1.5s initial pause
+          end: 3.0,
+          text: 'Hello world',
+          words: [
+            { id: 'w-1', text: 'Hello', start: 1.5, end: 2.0 },
+            { id: 'w-2', text: 'world', start: 3.5, end: 4.0 }, // 1.5s gap
+          ],
+        },
+      ],
+    };
+
+    await request(app)
+      .patch(`/api/v1/projects/${projectId}/transcript`)
+      .send({ transcript });
+  });
+
+  it('POST /api/v1/projects/:id/trim-silence detects initial dead air and gaps between words', async () => {
+    const res = await request(app)
+      .post(`/api/v1/projects/${projectId}/trim-silence`)
+      .send({ sensitivity: 'balanced' });
+    assert.equal(res.status, 200);
+    assert.equal(res.body.success, true);
+    assert.ok(res.body.data.removedClips.length >= 2);
+    assert.ok(res.body.data.totalRemovedSeconds > 0);
+  });
+});
+

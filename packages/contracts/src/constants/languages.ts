@@ -1,0 +1,18 @@
+export const SUPPORTED_TRANSCRIPTION_LANGUAGES = [
+  { code: 'auto', label: 'Auto-detect' },
+  { code: 'en', label: 'English' },
+  { code: 'ta', label: 'Tamil' },
+  { code: 'hi', label: 'Hindi' },
+  { code: 'te', label: 'Telugu' },
+  { code: 'kn', label: 'Kannada' },
+  { code: 'ml', label: 'Malayalam' },
+  { code: 'mr', label: 'Marathi' },
+  { code: 'bn', label: 'Bengali' },
+  { code: 'gu', label: 'Gujarati' },
+  { code: 'pa', label: 'Punjabi' },
+  { code: 'fr', label: 'French' },
+  { code: 'de', label: 'German' },
+  { code: 'es', label: 'Spanish' },
+  { code: 'ja', label: 'Japanese' },
+  { code: 'zh', label: 'Chinese' },
+];

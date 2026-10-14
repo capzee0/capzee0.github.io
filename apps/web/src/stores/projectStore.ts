@@ -8,8 +8,8 @@ export interface Project {
   title: string;
   status: string;
   durationSeconds: number | null;
-  originalAssetPath: string | null;
-  localVideoUrl: string | null; // blob URL for local preview
+  originalAssetPath?: string | null;
+  localVideoUrl?: string | null; // blob URL for local preview
   thumbnailUrl?: string | null; // video thumbnail preview data URL
   qualityLabel?: string | null; // quality badge (e.g. 720p HD, 1080p)
   aspectRatio?: string | null; // aspect ratio e.g. '9:16', '16:9', '1:1'

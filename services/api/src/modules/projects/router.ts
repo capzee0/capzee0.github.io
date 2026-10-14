@@ -1,44 +1,28 @@
-import { Router, Request, Response, NextFunction } from 'express';
-import { z } from 'zod';
+import { Router } from 'express';
 import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
-import { spawn } from 'child_process';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 import {
-  createProject,
-  getProject,
-  listProjects,
-  updateProject,
-  deleteProject,
-  getTranscript,
-  createJob,
-  updateJob,
-} from '../../db/local-store.js';
-import { createError } from '../../middleware/error.js';
+  handleCreateProject,
+  handleListProjects,
+  handleGetProject,
+  handleUpdateProject,
+  handleDeleteProject,
+} from './controllers/project.controller.js';
 import {
-  generateSRT,
-  generateVTT,
-  generatePlainText,
-  generateASS,
-  Transcript,
-} from '@capzee/contracts';
-import { validateMediaFile, probeMediaMetadata } from './media-validator.js';
-import { getStorageProvider } from '../../providers/storage/index.js';
+  handleUploadMedia,
+  handleUploadIntent,
+  handleServeMedia,
+} from './controllers/media.controller.js';
+import { handleRenderProject } from './controllers/render.controller.js';
+import { handleExportProject } from './controllers/export.controller.js';
+import { handleTrimSilence } from './controllers/silence.controller.js';
 
 export const projectsRouter = Router();
 
 const UPLOAD_DIR = path.resolve(process.cwd(), 'uploads');
 if (!fs.existsSync(UPLOAD_DIR)) {
   fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-}
-
-const EXPORT_DIR = path.resolve(process.cwd(), 'exports');
-if (!fs.existsSync(EXPORT_DIR)) {
-  fs.mkdirSync(EXPORT_DIR, { recursive: true });
 }
 
 const storage = multer.diskStorage({
@@ -55,444 +39,23 @@ const upload = multer({
   limits: { fileSize: 500 * 1024 * 1024 }, // 500MB
 });
 
-const createProjectBody = z.object({
-  title: z.string().min(1).max(255),
-  localVideoPath: z.string().optional(),
-});
+// ─── Project CRUD ────────────────────────────────────────────────────────────
+projectsRouter.post('/', handleCreateProject);
+projectsRouter.get('/', handleListProjects);
+projectsRouter.get('/:projectId', handleGetProject);
+projectsRouter.patch('/:projectId', handleUpdateProject);
+projectsRouter.delete('/:projectId', handleDeleteProject);
 
-const patchProjectBody = z.object({
-  title: z.string().min(1).max(255).optional(),
-  status: z.enum(['created', 'uploading', 'processing', 'transcribed', 'ready', 'error']).optional(),
-});
+// ─── Media Management ────────────────────────────────────────────────────────
+projectsRouter.post('/:projectId/media', upload.single('file'), handleUploadMedia);
+projectsRouter.post('/:projectId/upload-intent', handleUploadIntent);
+projectsRouter.get('/:projectId/media', handleServeMedia);
 
-// POST /projects
-projectsRouter.post('/', (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const body = createProjectBody.parse(req.body);
-    const project = createProject({ title: body.title, localVideoPath: body.localVideoPath });
-    res.status(201).json({ success: true, data: project });
-  } catch (err) {
-    next(err);
-  }
-});
+// ─── Video Rendering & Processing ────────────────────────────────────────────
+projectsRouter.post('/:projectId/render', handleRenderProject);
 
-// GET /projects
-projectsRouter.get('/', (_req: Request, res: Response) => {
-  const projects = listProjects();
-  res.json({ success: true, data: projects });
-});
+// ─── Multi-Format Subtitle & Video Export ────────────────────────────────────
+projectsRouter.get('/:projectId/export', handleExportProject);
 
-// GET /projects/:projectId
-projectsRouter.get('/:projectId', (req: Request, res: Response, next: NextFunction) => {
-  const projectId = req.params.projectId as string;
-  const project = getProject(projectId);
-  if (!project) return next(createError('Project not found', 404, 'PROJECT_NOT_FOUND'));
-  res.json({ success: true, data: project });
-});
-
-// PATCH /projects/:projectId
-projectsRouter.patch('/:projectId', (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const projectId = req.params.projectId as string;
-    const body = patchProjectBody.parse(req.body);
-    const project = updateProject(projectId, body);
-    if (!project) return next(createError('Project not found', 404, 'PROJECT_NOT_FOUND'));
-    res.json({ success: true, data: project });
-  } catch (err) {
-    next(err);
-  }
-});
-
-// DELETE /projects/:projectId
-projectsRouter.delete('/:projectId', (req: Request, res: Response, next: NextFunction) => {
-  const projectId = req.params.projectId as string;
-  const deleted = deleteProject(projectId);
-  if (!deleted) return next(createError('Project not found', 404, 'PROJECT_NOT_FOUND'));
-  res.json({ success: true, data: { deleted: true } });
-});
-
-// POST /projects/:projectId/media
-projectsRouter.post(
-  '/:projectId/media',
-  upload.single('file'),
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const projectId = req.params.projectId as string;
-      const project = getProject(projectId);
-      if (!project) return next(createError('Project not found', 404, 'PROJECT_NOT_FOUND'));
-
-      if (!req.file) {
-        return next(createError('No file provided in form-data "file" field', 400, 'NO_FILE_PROVIDED'));
-      }
-
-      const tempPath = path.resolve(req.file.path);
-
-      // Validate media file container and magic bytes
-      const validation = await validateMediaFile(tempPath);
-      if (!validation.valid) {
-        try {
-          if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
-        } catch {
-          // ignore cleanup error
-        }
-        return next(createError(validation.error || 'Invalid media file format', 400, 'INVALID_MEDIA_TYPE'));
-      }
-
-      // Probe duration and dimensions if available
-      const metadata = await probeMediaMetadata(tempPath);
-
-      // Save via storage provider
-      const storage = getStorageProvider();
-      const stored = await storage.saveFile({
-        sourcePath: tempPath,
-        originalName: req.file.originalname,
-        mimeType: validation.mimeType,
-        destinationSubdir: projectId,
-      });
-
-      const updated = updateProject(projectId, {
-        originalAssetPath: stored.storedPath,
-        status: 'ready',
-        ...(metadata.duration ? { duration: metadata.duration } : {}),
-      });
-
-      res.status(200).json({
-        success: true,
-        data: {
-          ...updated,
-          mediaMetadata: metadata,
-          publicUrl: stored.publicUrl,
-        },
-      });
-    } catch (err) {
-      next(err);
-    }
-  }
-);
-
-// POST /projects/:projectId/upload-intent (Direct-to-cloud signed URL)
-projectsRouter.post('/:projectId/upload-intent', async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const projectId = req.params.projectId as string;
-    const project = getProject(projectId);
-    if (!project) return next(createError('Project not found', 404, 'PROJECT_NOT_FOUND'));
-
-    const { filename = 'video.mp4', mimeType = 'video/mp4' } = req.body;
-    const storage = getStorageProvider();
-
-    if (storage.createSignedUploadUrl) {
-      const signed = await storage.createSignedUploadUrl({ filename, mimeType });
-      return res.json({ success: true, data: signed });
-    }
-
-    res.json({
-      success: true,
-      data: {
-        uploadUrl: `/api/v1/projects/${projectId}/media`,
-        fileKey: `${projectId}-${filename}`,
-        expiresInSeconds: 3600,
-      },
-    });
-  } catch (err) {
-    next(err);
-  }
-});
-
-// GET /projects/:projectId/media
-projectsRouter.get('/:projectId/media', (req: Request, res: Response, next: NextFunction) => {
-  const projectId = req.params.projectId as string;
-  const project = getProject(projectId);
-  if (!project) return next(createError('Project not found', 404, 'PROJECT_NOT_FOUND'));
-
-  const videoPath = project.originalAssetPath;
-  if (!videoPath || !fs.existsSync(videoPath)) {
-    return next(createError('Media file not found', 404, 'MEDIA_NOT_FOUND'));
-  }
-
-  res.sendFile(path.resolve(videoPath));
-});
-
-// POST /projects/:projectId/render
-projectsRouter.post('/:projectId/render', async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const projectId = req.params.projectId as string;
-    const project = getProject(projectId);
-    if (!project) return next(createError('Project not found', 404, 'PROJECT_NOT_FOUND'));
-
-    if (!project.originalAssetPath || !fs.existsSync(project.originalAssetPath)) {
-      return next(createError('No media file exists for this project', 422, 'NO_MEDIA'));
-    }
-
-    const rawTranscript = getTranscript(projectId);
-    if (!rawTranscript) {
-      return next(createError('No transcript found for this project. Transcribe first.', 422, 'NO_TRANSCRIPT'));
-    }
-
-    const transcript = rawTranscript as Transcript;
-    const job = createJob({ projectId: project.id, jobType: 'render' });
-    updateJob(job.id, { status: 'processing', stage: 'initializing', progress: 5 });
-    updateProject(project.id, { status: 'processing' });
-
-    // Write transcript to a temporary json file for the python worker
-    const tmpTranscriptPath = path.join(EXPORT_DIR, `transcript-${job.id}.json`);
-    fs.writeFileSync(tmpTranscriptPath, JSON.stringify(transcript), 'utf-8');
-
-    const outputFileName = `${project.id}-rendered-${Date.now()}.mp4`;
-    const outputPath = path.join(EXPORT_DIR, outputFileName);
-
-    const possibleWorkerPaths = [
-      path.resolve(__dirname, '../../../../ai-worker/capzee_worker/scripts/render_cli.py'),
-      path.resolve(process.cwd(), 'services/ai-worker/capzee_worker/scripts/render_cli.py'),
-      path.resolve(process.cwd(), '../ai-worker/capzee_worker/scripts/render_cli.py'),
-    ];
-    const workerScript = possibleWorkerPaths.find((p) => fs.existsSync(p)) || possibleWorkerPaths[0];
-    const pythonBin = process.env.PYTHON_PATH ?? 'python';
-
-    const args = [
-      workerScript,
-      '--video', project.originalAssetPath,
-      '--transcript', tmpTranscriptPath,
-      '--style', JSON.stringify(req.body.style ?? {}),
-      '--output', outputPath,
-      '--resolution', req.body.resolution ?? 'original',
-      '--job-id', job.id,
-    ];
-
-    const child = spawn(pythonBin, args, { stdio: ['ignore', 'pipe', 'pipe'] });
-    let stdout = '';
-    let stderr = '';
-
-    child.stdout.on('data', (data: Buffer) => {
-      stdout += data.toString();
-    });
-
-    child.stderr.on('data', (data: Buffer) => {
-      stderr += data.toString();
-      // Try parsing progress event
-      try {
-        const lines = data.toString().split('\n').filter(Boolean);
-        for (const l of lines) {
-          const evt = JSON.parse(l);
-          if (evt.type === 'progress') {
-            updateJob(job.id, { progress: evt.progress, stage: evt.stage });
-          }
-        }
-      } catch {
-        // Not JSON progress event, ignore
-      }
-    });
-
-    child.on('close', (code: number | null) => {
-      // Clean up tmp transcript
-      try {
-        if (fs.existsSync(tmpTranscriptPath)) fs.unlinkSync(tmpTranscriptPath);
-      } catch {
-        // ignore
-      }
-
-      if (code === 0) {
-        try {
-          const result = JSON.parse(stdout);
-          if (result.success && fs.existsSync(outputPath)) {
-            updateProject(project.id, {
-              status: 'ready',
-              renderedAssetPath: outputPath,
-            });
-            updateJob(job.id, {
-              status: 'completed',
-              progress: 100,
-              stage: 'completed',
-              completedAt: new Date().toISOString(),
-            });
-            return;
-          }
-        } catch {
-          // fall through
-        }
-      }
-
-      // Handle failure
-      let errorCode = 'RENDER_FAILED';
-      let errorMessage = stderr.slice(-400) || 'Rendering failed';
-      try {
-        const parsedOut = JSON.parse(stdout);
-        if (parsedOut.error) {
-          errorCode = parsedOut.error.code || errorCode;
-          errorMessage = parsedOut.error.message || errorMessage;
-        }
-      } catch {
-        // use fallback
-      }
-
-      updateJob(job.id, {
-        status: 'failed',
-        errorCode,
-        errorMessage,
-      });
-      updateProject(project.id, { status: 'error' });
-    });
-
-    res.status(202).json({
-      success: true,
-      data: {
-        job: {
-          id: job.id,
-          status: 'processing',
-          progress: 5,
-        },
-      },
-    });
-  } catch (err) {
-    next(err);
-  }
-});
-
-// GET /projects/:projectId/export?format=mp4|srt|vtt|txt|json
-projectsRouter.get('/:projectId/export', (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const projectId = req.params.projectId as string;
-    const project = getProject(projectId);
-    if (!project) return next(createError('Project not found', 404, 'PROJECT_NOT_FOUND'));
-
-    const format = String(req.query.format || 'srt').toLowerCase();
-    const rawTranscript = getTranscript(projectId);
-
-    if (format === 'mp4') {
-      if (!project.renderedAssetPath || !fs.existsSync(project.renderedAssetPath)) {
-        return next(createError('Rendered video not found. Please render the video first.', 404, 'RENDER_NOT_FOUND'));
-      }
-      return res.download(project.renderedAssetPath, `${project.title || 'captioned-video'}.mp4`);
-    }
-
-    if (!rawTranscript) {
-      return next(createError('No transcript available for export', 404, 'TRANSCRIPT_NOT_FOUND'));
-    }
-
-    const transcript = rawTranscript as Transcript;
-
-    if (format === 'srt') {
-      const srt = generateSRT(transcript);
-      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-      res.setHeader('Content-Disposition', `attachment; filename="${project.title || 'captions'}.srt"`);
-      return res.send(srt);
-    }
-
-    if (format === 'vtt') {
-      const vtt = generateVTT(transcript);
-      res.setHeader('Content-Type', 'text/vtt; charset=utf-8');
-      res.setHeader('Content-Disposition', `attachment; filename="${project.title || 'captions'}.vtt"`);
-      return res.send(vtt);
-    }
-
-    if (format === 'txt') {
-      const txt = generatePlainText(transcript);
-      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-      res.setHeader('Content-Disposition', `attachment; filename="${project.title || 'transcript'}.txt"`);
-      return res.send(txt);
-    }
-
-    if (format === 'json') {
-      res.setHeader('Content-Type', 'application/json; charset=utf-8');
-      res.setHeader('Content-Disposition', `attachment; filename="${project.title || 'transcript'}.json"`);
-      return res.json(transcript);
-    }
-
-    if (format === 'ass') {
-      let style = {};
-      if (req.query.style) {
-        try {
-          style = JSON.parse(String(req.query.style));
-        } catch {
-          // ignore invalid style query parameter
-        }
-      }
-      const ass = generateASS(transcript, style);
-      res.setHeader('Content-Type', 'text/x-ssa; charset=utf-8');
-      res.setHeader('Content-Disposition', `attachment; filename="${project.title || 'captions'}.ass"`);
-      return res.send(ass);
-    }
-
-    return next(createError(`Unsupported export format: ${format}`, 400, 'INVALID_FORMAT'));
-  } catch (err) {
-    next(err);
-  }
-});
-
-// POST /projects/:projectId/trim-silence
-projectsRouter.post('/:projectId/trim-silence', (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const projectId = req.params.projectId as string;
-    const project = getProject(projectId);
-    if (!project) return next(createError('Project not found', 404, 'PROJECT_NOT_FOUND'));
-
-    const rawTranscript = getTranscript(projectId);
-    if (!rawTranscript) {
-      return next(createError('No transcript found. Transcribe first to detect pauses.', 422, 'NO_TRANSCRIPT'));
-    }
-
-    const { sensitivity = 'balanced' } = req.body as { sensitivity?: 'gentle' | 'balanced' | 'tight' };
-    const minPauseSec = sensitivity === 'gentle' ? 0.9 : sensitivity === 'tight' ? 0.4 : 0.6;
-
-    const transcript = rawTranscript as Transcript;
-    const segments = transcript.segments || [];
-
-    const allWords: Array<{ text: string; start: number; end: number }> = [];
-    for (const seg of segments) {
-      if (seg.words && seg.words.length > 0) {
-        for (const w of seg.words) {
-          allWords.push({ text: w.text, start: w.start, end: w.end });
-        }
-      } else {
-        allWords.push({ text: seg.text, start: seg.start, end: seg.end });
-      }
-    }
-
-    allWords.sort((a, b) => a.start - b.start);
-
-    const removedClips: Array<{ id: string; start: number; end: number; duration: number; reason: string }> = [];
-
-    // Leading pause before first word
-    if (allWords.length > 0 && allWords[0].start > minPauseSec) {
-      const dur = Number(allWords[0].start.toFixed(2));
-      removedClips.push({
-        id: 'silence-0',
-        start: 0,
-        end: allWords[0].start,
-        duration: dur,
-        reason: `Initial dead air (${dur}s pause)`,
-      });
-    }
-
-    // Gaps between words
-    for (let i = 0; i < allWords.length - 1; i++) {
-      const currentEnd = allWords[i].end;
-      const nextStart = allWords[i + 1].start;
-      const gap = nextStart - currentEnd;
-      if (gap >= minPauseSec) {
-        const dur = Number(gap.toFixed(2));
-        removedClips.push({
-          id: `silence-${i + 1}`,
-          start: Number(currentEnd.toFixed(2)),
-          end: Number(nextStart.toFixed(2)),
-          duration: dur,
-          reason: `Dead air between "${allWords[i].text}" and "${allWords[i + 1].text}" (${dur}s)`,
-        });
-      }
-    }
-
-    const totalRemoved = removedClips.reduce((acc, c) => acc + c.duration, 0);
-
-    res.json({
-      success: true,
-      data: {
-        sensitivity,
-        minPauseSec,
-        removedClips,
-        totalRemovedSeconds: Number(totalRemoved.toFixed(2)),
-        count: removedClips.length,
-      },
-    });
-  } catch (err) {
-    next(err);
-  }
-});
+// ─── AI Silence Removal ──────────────────────────────────────────────────────
+projectsRouter.post('/:projectId/trim-silence', handleTrimSilence);
