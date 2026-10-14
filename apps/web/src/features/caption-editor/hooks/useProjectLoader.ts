@@ -94,6 +94,7 @@ export function useProjectLoader({ projectId }: UseProjectLoaderProps) {
     return () => {
       isMounted = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
 
   // Subscribe to real-time SSE job events

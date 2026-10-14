@@ -60,7 +60,7 @@ export function EditorPage() {
   const [historyIndex, setHistoryIndex] = useState(-1);
 
   // Project loader hook
-  const { loading: _loading, videoSrc, setVideoSrc } = useProjectLoader({ projectId });
+  const { videoSrc, setVideoSrc } = useProjectLoader({ projectId });
 
   // Video playback & active caption tracking hook
   const {
