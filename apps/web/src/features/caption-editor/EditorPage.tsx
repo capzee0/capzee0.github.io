@@ -243,22 +243,33 @@ export function EditorPage() {
       />
 
       {/* ── MOBILE TAB SWITCHER (Visible on small screens) ── */}
-      <div className="lg:hidden flex items-center justify-between bg-[#CDCBD6] border-b border-[#2F3020]/20 px-2 py-1.5 z-20">
-        <div className="flex items-center gap-1 w-full bg-[#FAF7F5] p-1 rounded-xl">
-          {(['preview', 'presets', 'transcript', 'style', 'silence', 'ai'] as const).map((tab) => (
+      <div className="lg:hidden flex items-center justify-between bg-[#CDCBD6] border-b border-[#2F3020]/20 px-2.5 py-2 z-20 shadow-2xs">
+        <div className="flex items-center gap-1 w-full bg-[#FAF7F5] p-1 rounded-2xl border border-[#2F3020]/15">
+          {(
+            [
+              { id: 'preview', label: 'Monitor' },
+              { id: 'presets', label: 'Presets' },
+              { id: 'transcript', label: 'Captions' },
+              { id: 'style', label: 'Style' },
+              { id: 'silence', label: 'Silence' },
+              { id: 'ai', label: 'AI Copy' },
+            ] as const
+          ).map((tab) => (
             <button
-              key={tab}
+              key={tab.id}
               type="button"
               onClick={() => {
-                setMobileTab(tab);
-                if (tab !== 'preview') setStudioTab(tab);
+                setMobileTab(tab.id);
+                if (tab.id !== 'preview') setStudioTab(tab.id as StudioTab);
               }}
               className={cn(
-                'flex-1 py-1 text-[11px] font-bold rounded-lg transition-colors capitalize text-center',
-                mobileTab === tab ? 'bg-[#16A34A] text-white shadow-xs' : 'text-[#2F3020]/75 hover:text-[#2F3020]'
+                'flex-1 py-1.5 text-[11px] font-bold rounded-xl transition-all capitalize text-center cursor-pointer',
+                mobileTab === tab.id
+                  ? 'bg-[#16A34A] text-white shadow-xs'
+                  : 'text-[#2F3020]/70 hover:text-[#2F3020]'
               )}
             >
-              {tab === 'ai' ? 'AI' : tab}
+              {tab.label}
             </button>
           ))}
         </div>

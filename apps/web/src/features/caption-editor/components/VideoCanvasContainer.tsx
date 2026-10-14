@@ -29,10 +29,10 @@ export function VideoCanvasContainer({
   onSelectLocalVideo,
 }: VideoCanvasContainerProps) {
   return (
-    <div className="bg-[#D96846] relative flex flex-col items-center justify-center p-2 sm:p-3 overflow-hidden min-w-0 min-h-0 flex-1 w-full h-full">
-      {/* Subtle dotted organic studio grid */}
+    <div className="bg-[#D96846] relative flex flex-col items-center justify-center p-2 sm:p-4 overflow-hidden min-w-0 min-h-0 flex-1 w-full h-full select-none">
+      {/* Subtle organic studio texture pattern */}
       <div
-        className="absolute inset-0 opacity-15 pointer-events-none"
+        className="absolute inset-0 opacity-20 pointer-events-none"
         style={{
           backgroundImage: 'radial-gradient(#2F3020 1px, transparent 1px)',
           backgroundSize: '24px 24px',
@@ -43,12 +43,18 @@ export function VideoCanvasContainer({
       <div className="flex-1 w-full min-h-0 flex items-center justify-center relative overflow-hidden py-1">
         <div
           className={cn(
-            'relative bg-black rounded-2xl overflow-hidden border-2 border-[#2F3020]/30 shadow-2xl flex items-center justify-center select-none max-h-full',
-            aspectRatio === '9:16' && 'h-full max-h-[92%] aspect-[9/16] w-auto',
-            aspectRatio === '16:9' && 'w-[94%] max-w-[800px] aspect-[16/9] max-h-full',
-            aspectRatio === '1:1' && 'h-full max-h-[92%] aspect-square w-auto'
+            'group relative bg-black rounded-3xl overflow-hidden border-2 border-[#2F3020]/40 shadow-2xl flex items-center justify-center select-none max-h-full transition-all duration-300',
+            aspectRatio === '9:16' && 'h-full max-h-[94%] aspect-[9/16] w-auto',
+            aspectRatio === '16:9' && 'w-[96%] max-w-[850px] aspect-[16/9] max-h-full',
+            aspectRatio === '1:1' && 'h-full max-h-[94%] aspect-square w-auto'
           )}
         >
+          {/* Studio Monitor Viewfinder Corner Guides */}
+          <div className="absolute top-2.5 left-2.5 w-3 h-3 border-t-2 border-l-2 border-white/40 pointer-events-none z-30" />
+          <div className="absolute top-2.5 right-2.5 w-3 h-3 border-t-2 border-r-2 border-white/40 pointer-events-none z-30" />
+          <div className="absolute bottom-2.5 left-2.5 w-3 h-3 border-b-2 border-l-2 border-white/40 pointer-events-none z-30" />
+          <div className="absolute bottom-2.5 right-2.5 w-3 h-3 border-b-2 border-r-2 border-white/40 pointer-events-none z-30" />
+
           {videoSrc ? (
             <>
               <video
@@ -86,17 +92,17 @@ export function VideoCanvasContainer({
                   backgroundSize: '20px 20px',
                 }}
               />
-              <div className="absolute top-1/4 w-40 h-40 bg-[#16A34A]/15 rounded-full blur-3xl pointer-events-none" />
+              <div className="absolute top-1/4 w-44 h-44 bg-[#16A34A]/15 rounded-full blur-3xl pointer-events-none" />
 
               {/* Top banner: Virtual Preview Mode */}
-              <div className="absolute top-3 left-3 right-3 z-30 flex items-center justify-between pointer-events-none">
-                <span className="text-[10px] font-mono font-bold text-white/90 bg-[#2F3020]/80 backdrop-blur-xs px-2 py-0.5 rounded-full border border-white/10 shadow-xs flex items-center gap-1">
+              <div className="absolute top-3.5 left-3.5 right-3.5 z-30 flex items-center justify-between pointer-events-none">
+                <span className="text-[10px] font-mono font-bold text-white/95 bg-[#2F3020]/90 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/15 shadow-sm flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#16A34A] animate-pulse" />
-                  Studio Preview
+                  <span>Preview Studio</span>
                 </span>
-                <label className="pointer-events-auto bg-[#16A34A] hover:bg-[#15803D] text-white text-[10px] font-bold py-1 px-2.5 rounded-full shadow-xs cursor-pointer flex items-center gap-1 transition-all hover:scale-105 active:scale-95">
-                  <Upload className="w-3 h-3" />
-                  Add Video
+                <label className="pointer-events-auto bg-[#16A34A] hover:bg-[#15803D] active:scale-95 text-white text-[10.5px] font-bold py-1.5 px-3 rounded-full shadow-md cursor-pointer flex items-center gap-1.5 transition-all hover:scale-105">
+                  <Upload className="w-3.5 h-3.5" />
+                  <span>Load Video</span>
                   <input
                     type="file"
                     accept="video/mp4,video/quicktime,video/webm"
@@ -120,12 +126,15 @@ export function VideoCanvasContainer({
                   onPositionChange={onPositionChange}
                 />
               ) : (
-                <div className="text-center p-6 text-[#CDCBD6]/60 pointer-events-none">
-                  <p className="text-sm font-bold text-white/80 tracking-wide uppercase font-mono">
+                <div className="text-center p-6 text-[#CDCBD6]/75 pointer-events-none">
+                  <div className="w-12 h-12 rounded-2xl bg-white/10 border border-white/15 flex items-center justify-center mx-auto mb-3 shadow-inner">
+                    <span className="text-xl">✨</span>
+                  </div>
+                  <p className="text-xs sm:text-sm font-extrabold text-white tracking-wider uppercase font-mono">
                     Virtual Studio Canvas
                   </p>
-                  <p className="text-xs text-[#CDCBD6]/60 mt-1 max-w-[200px] mx-auto">
-                    Press Play or spacebar to preview animated viral subtitles live.
+                  <p className="text-[11px] sm:text-xs text-[#CDCBD6]/75 mt-1.5 max-w-[220px] mx-auto leading-relaxed">
+                    Press Spacebar or Play on the timeline to preview dynamic viral animations.
                   </p>
                 </div>
               )}
